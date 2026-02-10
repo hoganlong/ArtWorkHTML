@@ -1,6 +1,13 @@
+#pragma warning disable CA2249 
+
 using Microsoft.Extensions.Configuration;
 using Npgsql;
 using System.Text;
+
+using Amazon.S3;
+using Amazon.S3.Model;
+using System.Security.Cryptography.X509Certificates;
+
 
 namespace ArtWorkHTML;
 
@@ -108,10 +115,11 @@ public class ArtworkHTML
     }
 
 
-    private async Task GenerateArtworkListPlusPage()
+    private async Task GenerateArtworkListPage()
     {
       ArtList artList = new();
 
+      // Get all artworks from the database
       await using var connection = new NpgsqlConnection(_connectionString);
       await connection.OpenAsync();
 
@@ -127,13 +135,241 @@ public class ArtworkHTML
 
       while (await reader.ReadAsync())
       {
-        Artwork artwork = new(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
-                              reader.GetDateTime(4), reader.GetString(5), reader.GetString(6), reader.GetString(7),
-                              reader.GetString(8), reader.GetString(9), reader.GetString(10), reader.GetString(11));
+        Artwork artwork = new(reader.GetInt32(0).ToString(),
+          reader.IsDBNull(1)? "":reader.GetString(1),
+           reader.IsDBNull(2)? "":reader.GetString(2), 
+          reader.IsDBNull(3)? "": reader.GetString(3),
+            reader.IsDBNull(4)?  DateTime.MinValue :  reader.GetDateTime(4), 
+           reader.IsDBNull(5)? "":                    reader.GetString(5), 
+            reader.IsDBNull(6)? "":                   reader.GetString(6),
+             reader.IsDBNull(7)? "":                   reader.GetString(7),
+            reader.IsDBNull(8)? "":                   reader.GetString(8), 
+            reader.IsDBNull(9)? "":                   reader.GetString(9), 
+            reader.IsDBNull(10)? "":                   reader.GetString(10),
+             reader.IsDBNull(11)? "":                   reader.GetString(11));
 
          artList.AddArtwork(artwork);
       } // while reader.ReadAsync()
 
+
+    string bucketName = "keithlong-art-photos";
+    string region =  "us-east-1";
+//    Dictionary<string, int> updates = new();
+    
+    try
+    {
+      var s3Client = new AmazonS3Client(Amazon.RegionEndpoint.GetBySystemName(region));
+
+      Console.WriteLine($"Connecting to S3 bucket: {bucketName} in region: {region}");
+      Console.WriteLine("Listing files...\n");
+
+      var request = new ListObjectsV2Request
+      {
+        BucketName = bucketName
+      };
+
+      ListObjectsV2Response response;
+      int totalBucketFiles = 0;
+
+      //update
+    //  int skippedBucketFiles = 0;
+      int tifBucketFiles = 0;
+      int scanBucketFiles = 0;
+      int scanJPGBucketFiles = 0;
+      int JPGBucketFiles = 0;
+      
+//      string title = $"Keith Long Archive Polaroid Image List (generated - {DateTime.Now.ToLongDateString()} at {DateTime.Now.ToLongTimeString()}";
+/*
+      StringBuilder htmlContent = new StringBuilder();
+      htmlContent.Append("<!DOCTYPE html>\n");
+      htmlContent.Append("<html>\n");
+      htmlContent.AppendLine("<title>"+title+"</title>");
+
+      htmlContent.Append("<style>\n");
+      htmlContent.Append("  div.gallery \n");
+      htmlContent.Append("  {\n");
+      htmlContent.Append("    display: flex;\n");
+      htmlContent.Append("    flex-wrap: wrap;\n");
+      htmlContent.Append("    justify-content: flex-start;\n");
+      htmlContent.Append("  }\n");
+
+      htmlContent.Append("  div.gallery-item\n");
+      htmlContent.Append("  {\n");
+      htmlContent.Append("    margin: 5px;\n");
+      htmlContent.Append("    border: 1px solid #ccc;\n");
+      htmlContent.Append("    width: 300px;\n");
+      htmlContent.Append("  }\n");
+
+      htmlContent.Append("  div.gallery-item:hover\n");
+      htmlContent.Append("  {\n");
+      htmlContent.Append("    border: 1px solid #777;\n");
+      htmlContent.Append("  }\n");
+
+      htmlContent.Append("  div.gallery-item img\n");
+      htmlContent.Append("  {\n");
+      htmlContent.Append("    width: 100%;\n");
+      htmlContent.Append("    height: auto;\n");
+      htmlContent.Append("  }\n");
+
+      htmlContent.Append("  div.gallery-item div.desc\n");
+      htmlContent.Append("  {\n");
+      htmlContent.Append("    padding: 5px;\n");
+      htmlContent.Append("    text-align: center;\n");
+      htmlContent.Append("  }\n");
+      htmlContent.Append("</style>\n");
+
+      htmlContent.Append("</style>\n");
+      htmlContent.Append("</head>\n");
+
+      htmlContent.Append("<body>\n");
+      htmlContent.AppendLine("<h1>"+title+"</h1><br/>");
+      htmlContent.Append("<div class= \"gallery\" >\n");
+*/
+      do
+      {
+        response = await s3Client.ListObjectsV2Async(request);
+        
+        foreach (Amazon.S3.Model.S3Object obj in response.S3Objects)
+        {
+          totalBucketFiles++;
+          string fullPath = obj.Key;
+
+          if (fullPath.Length > 10 && fullPath[0..9] == "scans/jpg")
+          {
+            // not doing anything with scans right now, but want to keep track of how many there are in the bucket
+            scanJPGBucketFiles++;
+
+      /*      string filename = obj.Key.Substring(10);
+            string name = filename.Remove(filename.LastIndexOf('.'));
+            string url = $"https://keithlong-art-photos.s3.us-east-1.amazonaws.com/scans/jpg/{filename}";
+            
+            htmlContent.Append("  <div class= \"gallery-item\" >\n");
+            htmlContent.Append($"    <a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\"><img src=\"{url}\" title=\"(click for full size)\"  /></a>\n");
+            htmlContent.Append($"    <div class=\"desc\">{name}<br/><div style=\"font-size:x-small\">{obj.LastModified}</div></div>\n");
+            htmlContent.Append("  </div>\n");
+
+            string lastModDate = obj.LastModified.Value.ToShortDateString();
+            if (updates.ContainsKey(lastModDate))
+              updates[lastModDate]++;
+            else
+              updates[lastModDate] = 1;
+      */
+          }
+          else
+          {
+            int slashPos = fullPath.LastIndexOf('/');
+
+            if (slashPos == -1)
+            {
+              // tif dir files are in the root of the bucket, so we want to skip those
+              tifBucketFiles++;
+              continue;
+            }
+            else
+            {
+              string dir = fullPath[0..slashPos];
+              switch(dir)
+              {
+                case "jpg":
+                  JPGBucketFiles++;
+                  break;
+                case "scans":
+                  scanBucketFiles++;
+                  break;
+                case "scans/jpg":
+                  scanJPGBucketFiles++;
+                  break;
+                default:
+                  Console.WriteLine($"Unknown directory: {dir} in file: {fullPath}");
+                  break;
+              }
+            }
+
+
+//            Console.WriteLine(obj.Key);
+           // skippedBucketFiles++;
+          }
+            
+        }
+
+        request.ContinuationToken = response.NextContinuationToken;
+      } while (response.IsTruncated == true);
+
+      Console.WriteLine($"Total files in bucket: {totalBucketFiles}");
+      Console.WriteLine($"Total JPG files in bucket: {JPGBucketFiles}");
+      Console.WriteLine($"Total scan JPG files in bucket: {scanJPGBucketFiles}");   
+      Console.WriteLine($"Total scan files in bucket: {scanBucketFiles}");
+      Console.WriteLine($"Total tif files in bucket: {tifBucketFiles}");  
+    }
+
+    catch (AmazonS3Exception ex)
+    {
+      Console.WriteLine($"AWS S3 Error: {ex.Message}");
+      Console.WriteLine($"Error Code: {ex.ErrorCode}");
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine($"Error: {ex.Message}");
+    }
+
+        /*
+        foreach (Amazon.S3.Model.S3Object obj in response.S3Objects)
+        {
+          totalFiles++;
+          
+          Console.WriteLine($"Key: {obj.Key}");
+          Console.WriteLine($"  Size: {FormatBytes(obj.Size ?? 0)}");
+          Console.WriteLine($"  Last Modified: {obj.LastModified}");
+          Console.WriteLine($"  Storage Class: {obj.StorageClass}");
+          Console.WriteLine();
+        }
+
+        request.ContinuationToken = response.NextContinuationToken;
+*/
+    /*    
+      } while (response.IsTruncated == true);
+
+      htmlContent.Append("  </div>\n");
+
+      htmlContent.AppendLine("<div style=\"width:100%; text-align: center\">");
+      htmlContent.AppendLine($"Total files: {totalFiles}<BR/>");
+      htmlContent.AppendLine($"Total skipped: {skippedFiles}<BR/>");
+      htmlContent.AppendLine($"Total scans: {scanfiles}<BR/>");
+      foreach (var dCount in updates)
+        htmlContent.AppendLine($"{dCount.Key} has {dCount.Value} updates<BR/>");
+      htmlContent.AppendLine("</div>");
+
+      htmlContent.Append("</body>\n");
+
+      Directory.SetCurrentDirectory(Path.GetDirectoryName(Util.CurrentQueryPath));
+      // Write the content to a file
+      File.WriteAllText(@".\scannedImages.html", htmlContent.ToString(), Encoding.UTF8);
+
+      //update end
+
+      Console.WriteLine($"Total files: {totalFiles}");
+      Console.WriteLine($"Total skipped: {skippedFiles}");
+      Console.WriteLine($"Total scans: {scanfiles}");
+      updates.Dump();
+    }
+
+    catch (AmazonS3Exception ex)
+    {
+      Console.WriteLine($"AWS S3 Error: {ex.Message}");
+      Console.WriteLine($"Error Code: {ex.ErrorCode}");
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine($"Error: {ex.Message}");
+    }
+  }
+
+  */
+     
+
+
+
+      // Now generate the HTML page using the artList
       var html = new StringBuilder();
       html.AppendLine(GetHtmlHeader("All Artworks - Keith Long Archive"));
 
@@ -146,24 +382,6 @@ public class ArtworkHTML
         foreach (var artlist in artList.artworks) // while (await reader.ReadAsync())
         {
           Artwork art = artlist.Value;
-          /*
-            var id = reader.IsDBNull(0) ? "" : reader.GetInt32(0).ToString();
-            var iFileName = reader.IsDBNull(1) ? "" : reader.GetString(1);
-            var title = reader.IsDBNull(2) ? "" : reader.GetString(2);
-            var series = reader.IsDBNull(3) ? "" : reader.GetString(3);
-            var ctDate = reader.IsDBNull(4) ? "" : reader.GetDateTime(4).ToString("yyyy-MM-dd");
-            var medium = reader.IsDBNull(5) ? "" : reader.GetString(5);
-            var dimensions = reader.IsDBNull(6) ? "" : reader.GetString(6);
-            var foldDimensions = reader.IsDBNull(7) ? "" : reader.GetString(7);
-            var location = reader.IsDBNull(8) ? "" : reader.GetString(8);
-            var notes = reader.IsDBNull(9) ? "" : reader.GetString(9);
-            var humanId = reader.IsDBNull(10) ? "" : reader.GetString(10);
-            var image_ids = reader.IsDBNull(11) ? "" : reader.GetString(11);
-
-            bool haveImg = !string.IsNullOrEmpty(iFileName);
-            var tifURL = haveImg ? "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/" + iFileName + ".tif" : "";
-            var imgURL = haveImg ? "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/jpg/" + iFileName + ".jpg" : "";
-*/
           
             html.AppendLine($@"<div class='gallery-item'>");
             if ((art.states & StatesType.NoImage) == 0) // if we have an image
@@ -193,7 +411,7 @@ public class ArtworkHTML
     }
 
 
-    private async Task GenerateArtworkListPage()
+    private async Task GenerateArtworkListPageOld()
     {
         await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync();
