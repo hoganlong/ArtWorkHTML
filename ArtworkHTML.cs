@@ -573,7 +573,6 @@ footer {
     margin: 5px;
     border: 1px solid #ccc;
     width: 250px;
-    oldwidth: 180px;
   }
   div.gallery-item:hover
   {
