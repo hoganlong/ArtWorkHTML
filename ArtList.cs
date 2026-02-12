@@ -9,8 +9,9 @@ namespace ArtWorkHTML
   {
     None = 0,
     NoImage = 1,
-    undef1 = 2,
-    undef2 = 4,
+    jpgFound = 2,
+    tifFound = 4,
+
     undef3 = 8,
     undef4 = 16,
     undef5 = 32,
@@ -43,6 +44,36 @@ namespace ArtWorkHTML
           artworks[artwork.humanId] = artwork;
         }
       }
+    }
+
+    public void AddBucketFile(string dir, string name, string ext)
+    {
+      var listElement = artworks.Where(x => x.Value.iFileName == name).FirstOrDefault();
+      
+      if (listElement.Key == null)
+      {
+        // file in bucket that doesn't match any of our artwork names create artwork for it.
+        artworks["unknow "+dupNumber.ToString()] = new Artwork(name);
+        dupNumber++;
+      }
+      else
+      {
+        // artwork for out name
+        var artwork = listElement.Value;
+
+        if (ext == "jpg")
+        {
+          // should check if in correct (expected) location in bucket, but for now just set the state
+          artwork.states |= StatesType.jpgFound; // Set jpg found state
+        }
+        else if (ext == "tif")
+        {
+          // should check if in correct (expected) location in bucket, but for now just set the state
+          artwork.states |= StatesType.tifFound; // Set tif found state
+        }
+      }
+
+
     }
 
 
@@ -103,6 +134,31 @@ namespace ArtWorkHTML
       }
 
     }
+
+    public Artwork(string filename)
+    {
+      this.id = "";
+      this.iFileName = filename;
+      this.title = "";
+      this.series = "";
+      this.ctDate = DateTime.Now;
+      this.medium = "";
+      this.dimensions =  "";
+      this.foldedDimensions = "";
+      this.location =  "";
+      this.notes =  "";
+      this.humanId =  "";
+      this.image_ids =  "";
+
+      this.states &= ~StatesType.NoImage;
+      // the following is not "tested" in code and should 
+      tifURL = baseURL + iFileName + ".tif";
+      jpgURL = baseURL + "jpg/" + iFileName + ".jpg";
+
+      this.errors.Add($"Was found on server and not DB");
+
+    }
+
 
 
 

@@ -135,18 +135,12 @@ public class ArtworkHTML
 
       while (await reader.ReadAsync())
       {
-        Artwork artwork = new(reader.GetInt32(0).ToString(),
-          reader.IsDBNull(1)? "":reader.GetString(1),
-           reader.IsDBNull(2)? "":reader.GetString(2), 
-          reader.IsDBNull(3)? "": reader.GetString(3),
-            reader.IsDBNull(4)?  DateTime.MinValue :  reader.GetDateTime(4), 
-           reader.IsDBNull(5)? "":                    reader.GetString(5), 
-            reader.IsDBNull(6)? "":                   reader.GetString(6),
-             reader.IsDBNull(7)? "":                   reader.GetString(7),
-            reader.IsDBNull(8)? "":                   reader.GetString(8), 
-            reader.IsDBNull(9)? "":                   reader.GetString(9), 
-            reader.IsDBNull(10)? "":                   reader.GetString(10),
-             reader.IsDBNull(11)? "":                   reader.GetString(11));
+        Artwork artwork = new(reader.GetInt32(0).ToString(), reader.IsDBNull(1)? "":reader.GetString(1),
+           reader.IsDBNull(2)? "":reader.GetString(2),  reader.IsDBNull(3)? "": reader.GetString(3),
+            reader.IsDBNull(4)?  DateTime.MinValue :  reader.GetDateTime(4), reader.IsDBNull(5)? "":reader.GetString(5), 
+            reader.IsDBNull(6)? "": reader.GetString(6), reader.IsDBNull(7)? "": reader.GetString(7),
+            reader.IsDBNull(8)? "": reader.GetString(8), reader.IsDBNull(9)? "": reader.GetString(9), 
+            reader.IsDBNull(10)? "": reader.GetString(10), reader.IsDBNull(11)? "": reader.GetString(11));
 
          artList.AddArtwork(artwork);
       } // while reader.ReadAsync()
@@ -172,7 +166,7 @@ public class ArtworkHTML
       int totalBucketFiles = 0;
 
       //update
-    //  int skippedBucketFiles = 0;
+      int skippedBucketFiles = 0;
       int tifBucketFiles = 0;
       int scanBucketFiles = 0;
       int scanJPGBucketFiles = 0;
@@ -257,21 +251,51 @@ public class ArtworkHTML
           }
           else
           {
+            // Just the dir ignore it.
+            if (fullPath.EndsWith("/"))
+            {
+              continue;
+            }
             int slashPos = fullPath.LastIndexOf('/');
 
             if (slashPos == -1)
             {
               // tif dir files are in the root of the bucket, so we want to skip those
               tifBucketFiles++;
+              skippedBucketFiles++;
               continue;
             }
             else
             {
               string dir = fullPath[0..slashPos];
+              string filename = fullPath[(slashPos + 1)..];
+              int dotLoc = filename.LastIndexOf('.');
+              string name = (dotLoc == -1) ? filename : filename[0..dotLoc];
+              string ext = (dotLoc == -1) ? "" : filename[(dotLoc + 1)..].ToLower();
+              
+              Console.WriteLine($"dir: {dir}, filename: {filename}, name: {name}, ext: {ext}");
+              
+              if (ext == "pdf")
+              {
+                skippedBucketFiles++;
+                continue;
+              }
+
               switch(dir)
               {
                 case "jpg":
-                  JPGBucketFiles++;
+                  if (ext == "jpg")
+                  {
+                    // should really check if in correct (expected) location in bucket, but for now just set the state
+                    artList.AddBucketFile(dir, name, ext);
+                    JPGBucketFiles++;
+                  }
+                  else
+                  {
+                    Console.WriteLine($"Expected jpg extension but found: {ext} in file: {fullPath}");
+                    skippedBucketFiles++;
+                    continue;
+                  } 
                   break;
                 case "scans":
                   scanBucketFiles++;
@@ -382,7 +406,16 @@ public class ArtworkHTML
         foreach (var artlist in artList.artworks) // while (await reader.ReadAsync())
         {
           Artwork art = artlist.Value;
-          
+
+
+
+         if (art.states.HasFlag(StatesType.jpgFound))
+      {
+        Console.WriteLine("Found jpg for artwork: " + art.humanId);
+        
+      }
+
+
             html.AppendLine($@"<div class='gallery-item'>");
             if ((art.states & StatesType.NoImage) == 0) // if we have an image
             {
@@ -400,6 +433,11 @@ public class ArtworkHTML
             html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
             html.AppendLine($"    {BlankOrWithBR(art.humanId, "  ")}");
             html.AppendLine($"  </div>");
+
+            html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>",art.errors)}</div>");
+
+            if (art.states.HasFlag(StatesType.jpgFound))
+              html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
 
             html.AppendLine($"</div>  <!-- gallery item -->");
         }
