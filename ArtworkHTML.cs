@@ -13,36 +13,36 @@ namespace ArtWorkHTML;
 
 public class ArtworkHTML
 {
-    private readonly string _connectionString;
-    private readonly string _outputDirectory;
+  private readonly string _connectionString;
+  private readonly string _outputDirectory;
 
-    public ArtworkHTML(string connectionString, string outputDirectory)
-    {
-        _connectionString = connectionString;
-        _outputDirectory = outputDirectory;
-    }
+  public ArtworkHTML(string connectionString, string outputDirectory)
+  {
+    _connectionString = connectionString;
+    _outputDirectory = outputDirectory;
+  }
 
-    public async Task GenerateAllPages()
-    {
-        await GenerateIndexPage();
-        await GenerateArtworkListPage();
-        await GenerateSeriesPages();
-        await GenerateLocationPages();
-        await GenerateStylesheet();
+  public async Task GenerateAllPages()
+  {
+    await GenerateIndexPage();
+    await GenerateArtworkListPage();
+    await GenerateSeriesPages();
+    await GenerateLocationPages();
+    await GenerateStylesheet();
 
-        Console.WriteLine("  ✓ index.html - Main landing page");
-        Console.WriteLine("  ✓ artworks.html - Complete artwork list");
-        Console.WriteLine("  ✓ series.html - Artworks by series");
-        Console.WriteLine("  ✓ locations.html - Artworks by location");
-        Console.WriteLine("  ✓ style.css - Stylesheet");
-    }
+    Console.WriteLine("  ✓ index.html - Main landing page");
+    Console.WriteLine("  ✓ artworks.html - Complete artwork list");
+    Console.WriteLine("  ✓ series.html - Artworks by series");
+    Console.WriteLine("  ✓ locations.html - Artworks by location");
+    Console.WriteLine("  ✓ style.css - Stylesheet");
+  }
 
-    private async Task GenerateIndexPage()
-    {
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync();
+  private async Task GenerateIndexPage()
+  {
+    await using var connection = new NpgsqlConnection(_connectionString);
+    await connection.OpenAsync();
 
-        var sql = @"
+    var sql = @"
             SELECT
                 COUNT(*) as total_artworks,
                 COUNT(DISTINCT series) as total_series,
@@ -52,24 +52,24 @@ public class ArtworkHTML
             FROM artwork
             WHERE create_dt IS NOT NULL";
 
-        await using var cmd = new NpgsqlCommand(sql, connection);
-        await using var reader = await cmd.ExecuteReaderAsync();
+    await using var cmd = new NpgsqlCommand(sql, connection);
+    await using var reader = await cmd.ExecuteReaderAsync();
 
-        int totalArtworks = 0, totalSeries = 0, totalLocations = 0;
-        string? earliestDate = null, latestDate = null;
+    int totalArtworks = 0, totalSeries = 0, totalLocations = 0;
+    string? earliestDate = null, latestDate = null;
 
-        if (await reader.ReadAsync())
-        {
-            totalArtworks = reader.GetInt32(0);
-            totalSeries = reader.IsDBNull(1) ? 0 : reader.GetInt32(1);
-            totalLocations = reader.IsDBNull(2) ? 0 : reader.GetInt32(2);
-            earliestDate = reader.IsDBNull(3) ? null : reader.GetDateTime(3).ToString("yyyy");
-            latestDate = reader.IsDBNull(4) ? null : reader.GetDateTime(4).ToString("yyyy");
-        }
+    if (await reader.ReadAsync())
+    {
+      totalArtworks = reader.GetInt32(0);
+      totalSeries = reader.IsDBNull(1) ? 0 : reader.GetInt32(1);
+      totalLocations = reader.IsDBNull(2) ? 0 : reader.GetInt32(2);
+      earliestDate = reader.IsDBNull(3) ? null : reader.GetDateTime(3).ToString("yyyy");
+      latestDate = reader.IsDBNull(4) ? null : reader.GetDateTime(4).ToString("yyyy");
+    }
 
-        var html = new StringBuilder();
-        html.AppendLine(GetHtmlHeader("Keith Long Archive"));
-        html.AppendLine(@"
+    var html = new StringBuilder();
+    html.AppendLine(GetHtmlHeader("Keith Long Archive"));
+    html.AppendLine(@"
     <div class='container'>
         <h1>Keith Long Archive</h1>
         <p class='subtitle'>Digital Archive of Artwork Collection</p>
@@ -99,57 +99,57 @@ public class ArtworkHTML
             <a href='locations.html' class='nav-button'>View by Location</a>
         </div>
     </div>");
-        html.AppendLine(GetHtmlFooter());
+    html.AppendLine(GetHtmlFooter());
 
-        await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "index.html"), html.ToString());
-    }
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "index.html"), html.ToString());
+  }
 
-    private static string BlankOrWithBR(string inS, string prepend = "")
+  private static string BlankOrWithBR(string inS, string prepend = "")
+  {
+    if (!string.IsNullOrEmpty(inS))
     {
-        if (!string.IsNullOrEmpty(inS))
-        {
-            return (prepend + inS + "<br/>");
-        }
-        else
-            return ("");
+      return (prepend + inS + "<br/>");
     }
+    else
+      return ("");
+  }
 
 
-    private async Task GenerateArtworkListPage()
-    {
-      ArtList artList = new();
+  private async Task GenerateArtworkListPage()
+  {
+    ArtList artList = new();
 
-      // Get all artworks from the database
-      await using var connection = new NpgsqlConnection(_connectionString);
-      await connection.OpenAsync();
+    // Get all artworks from the database
+    await using var connection = new NpgsqlConnection(_connectionString);
+    await connection.OpenAsync();
 
-      var sql = @"
+    var sql = @"
         SELECT
           id_field, iFileName, title, series, create_dt, medium, dimensions, FOLDED_DIMENSIONS,
           location, notes, human_readable_id, artwork_image_id
         FROM artwork
         ORDER BY human_readable_id ASC NULLS LAST";
 
-      await using var cmd = new NpgsqlCommand(sql, connection);
-      await using var reader = await cmd.ExecuteReaderAsync();
+    await using var cmd = new NpgsqlCommand(sql, connection);
+    await using var reader = await cmd.ExecuteReaderAsync();
 
-      while (await reader.ReadAsync())
-      {
-        Artwork artwork = new(reader.GetInt32(0).ToString(), reader.IsDBNull(1)? "":reader.GetString(1),
-           reader.IsDBNull(2)? "":reader.GetString(2),  reader.IsDBNull(3)? "": reader.GetString(3),
-            reader.IsDBNull(4)?  DateTime.MinValue :  reader.GetDateTime(4), reader.IsDBNull(5)? "":reader.GetString(5), 
-            reader.IsDBNull(6)? "": reader.GetString(6), reader.IsDBNull(7)? "": reader.GetString(7),
-            reader.IsDBNull(8)? "": reader.GetString(8), reader.IsDBNull(9)? "": reader.GetString(9), 
-            reader.IsDBNull(10)? "": reader.GetString(10), reader.IsDBNull(11)? "": reader.GetString(11));
+    while (await reader.ReadAsync())
+    {
+      Artwork artwork = new(reader.GetInt32(0).ToString(), reader.IsDBNull(1) ? "" : reader.GetString(1),
+         reader.IsDBNull(2) ? "" : reader.GetString(2), reader.IsDBNull(3) ? "" : reader.GetString(3),
+          reader.IsDBNull(4) ? DateTime.MinValue : reader.GetDateTime(4), reader.IsDBNull(5) ? "" : reader.GetString(5),
+          reader.IsDBNull(6) ? "" : reader.GetString(6), reader.IsDBNull(7) ? "" : reader.GetString(7),
+          reader.IsDBNull(8) ? "" : reader.GetString(8), reader.IsDBNull(9) ? "" : reader.GetString(9),
+          reader.IsDBNull(10) ? "" : reader.GetString(10), reader.IsDBNull(11) ? "" : reader.GetString(11));
 
-         artList.AddArtwork(artwork);
-      } // while reader.ReadAsync()
+      artList.AddArtwork(artwork);
+    } // while reader.ReadAsync()
 
 
     string bucketName = "keithlong-art-photos";
-    string region =  "us-east-1";
-//    Dictionary<string, int> updates = new();
-    
+    string region = "us-east-1";
+    //    Dictionary<string, int> updates = new();
+
     try
     {
       var s3Client = new AmazonS3Client(Amazon.RegionEndpoint.GetBySystemName(region));
@@ -171,58 +171,58 @@ public class ArtworkHTML
       int scanBucketFiles = 0;
       int scanJPGBucketFiles = 0;
       int JPGBucketFiles = 0;
-      
-//      string title = $"Keith Long Archive Polaroid Image List (generated - {DateTime.Now.ToLongDateString()} at {DateTime.Now.ToLongTimeString()}";
-/*
-      StringBuilder htmlContent = new StringBuilder();
-      htmlContent.Append("<!DOCTYPE html>\n");
-      htmlContent.Append("<html>\n");
-      htmlContent.AppendLine("<title>"+title+"</title>");
 
-      htmlContent.Append("<style>\n");
-      htmlContent.Append("  div.gallery \n");
-      htmlContent.Append("  {\n");
-      htmlContent.Append("    display: flex;\n");
-      htmlContent.Append("    flex-wrap: wrap;\n");
-      htmlContent.Append("    justify-content: flex-start;\n");
-      htmlContent.Append("  }\n");
+      //      string title = $"Keith Long Archive Polaroid Image List (generated - {DateTime.Now.ToLongDateString()} at {DateTime.Now.ToLongTimeString()}";
+      /*
+            StringBuilder htmlContent = new StringBuilder();
+            htmlContent.Append("<!DOCTYPE html>\n");
+            htmlContent.Append("<html>\n");
+            htmlContent.AppendLine("<title>"+title+"</title>");
 
-      htmlContent.Append("  div.gallery-item\n");
-      htmlContent.Append("  {\n");
-      htmlContent.Append("    margin: 5px;\n");
-      htmlContent.Append("    border: 1px solid #ccc;\n");
-      htmlContent.Append("    width: 300px;\n");
-      htmlContent.Append("  }\n");
+            htmlContent.Append("<style>\n");
+            htmlContent.Append("  div.gallery \n");
+            htmlContent.Append("  {\n");
+            htmlContent.Append("    display: flex;\n");
+            htmlContent.Append("    flex-wrap: wrap;\n");
+            htmlContent.Append("    justify-content: flex-start;\n");
+            htmlContent.Append("  }\n");
 
-      htmlContent.Append("  div.gallery-item:hover\n");
-      htmlContent.Append("  {\n");
-      htmlContent.Append("    border: 1px solid #777;\n");
-      htmlContent.Append("  }\n");
+            htmlContent.Append("  div.gallery-item\n");
+            htmlContent.Append("  {\n");
+            htmlContent.Append("    margin: 5px;\n");
+            htmlContent.Append("    border: 1px solid #ccc;\n");
+            htmlContent.Append("    width: 300px;\n");
+            htmlContent.Append("  }\n");
 
-      htmlContent.Append("  div.gallery-item img\n");
-      htmlContent.Append("  {\n");
-      htmlContent.Append("    width: 100%;\n");
-      htmlContent.Append("    height: auto;\n");
-      htmlContent.Append("  }\n");
+            htmlContent.Append("  div.gallery-item:hover\n");
+            htmlContent.Append("  {\n");
+            htmlContent.Append("    border: 1px solid #777;\n");
+            htmlContent.Append("  }\n");
 
-      htmlContent.Append("  div.gallery-item div.desc\n");
-      htmlContent.Append("  {\n");
-      htmlContent.Append("    padding: 5px;\n");
-      htmlContent.Append("    text-align: center;\n");
-      htmlContent.Append("  }\n");
-      htmlContent.Append("</style>\n");
+            htmlContent.Append("  div.gallery-item img\n");
+            htmlContent.Append("  {\n");
+            htmlContent.Append("    width: 100%;\n");
+            htmlContent.Append("    height: auto;\n");
+            htmlContent.Append("  }\n");
 
-      htmlContent.Append("</style>\n");
-      htmlContent.Append("</head>\n");
+            htmlContent.Append("  div.gallery-item div.desc\n");
+            htmlContent.Append("  {\n");
+            htmlContent.Append("    padding: 5px;\n");
+            htmlContent.Append("    text-align: center;\n");
+            htmlContent.Append("  }\n");
+            htmlContent.Append("</style>\n");
 
-      htmlContent.Append("<body>\n");
-      htmlContent.AppendLine("<h1>"+title+"</h1><br/>");
-      htmlContent.Append("<div class= \"gallery\" >\n");
-*/
+            htmlContent.Append("</style>\n");
+            htmlContent.Append("</head>\n");
+
+            htmlContent.Append("<body>\n");
+            htmlContent.AppendLine("<h1>"+title+"</h1><br/>");
+            htmlContent.Append("<div class= \"gallery\" >\n");
+      */
       do
       {
         response = await s3Client.ListObjectsV2Async(request);
-        
+
         foreach (Amazon.S3.Model.S3Object obj in response.S3Objects)
         {
           totalBucketFiles++;
@@ -233,21 +233,21 @@ public class ArtworkHTML
             // not doing anything with scans right now, but want to keep track of how many there are in the bucket
             scanJPGBucketFiles++;
 
-      /*      string filename = obj.Key.Substring(10);
-            string name = filename.Remove(filename.LastIndexOf('.'));
-            string url = $"https://keithlong-art-photos.s3.us-east-1.amazonaws.com/scans/jpg/{filename}";
-            
-            htmlContent.Append("  <div class= \"gallery-item\" >\n");
-            htmlContent.Append($"    <a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\"><img src=\"{url}\" title=\"(click for full size)\"  /></a>\n");
-            htmlContent.Append($"    <div class=\"desc\">{name}<br/><div style=\"font-size:x-small\">{obj.LastModified}</div></div>\n");
-            htmlContent.Append("  </div>\n");
+            /*      string filename = obj.Key.Substring(10);
+                  string name = filename.Remove(filename.LastIndexOf('.'));
+                  string url = $"https://keithlong-art-photos.s3.us-east-1.amazonaws.com/scans/jpg/{filename}";
 
-            string lastModDate = obj.LastModified.Value.ToShortDateString();
-            if (updates.ContainsKey(lastModDate))
-              updates[lastModDate]++;
-            else
-              updates[lastModDate] = 1;
-      */
+                  htmlContent.Append("  <div class= \"gallery-item\" >\n");
+                  htmlContent.Append($"    <a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\"><img src=\"{url}\" title=\"(click for full size)\"  /></a>\n");
+                  htmlContent.Append($"    <div class=\"desc\">{name}<br/><div style=\"font-size:x-small\">{obj.LastModified}</div></div>\n");
+                  htmlContent.Append("  </div>\n");
+
+                  string lastModDate = obj.LastModified.Value.ToShortDateString();
+                  if (updates.ContainsKey(lastModDate))
+                    updates[lastModDate]++;
+                  else
+                    updates[lastModDate] = 1;
+            */
           }
           else
           {
@@ -257,31 +257,33 @@ public class ArtworkHTML
               continue;
             }
             int slashPos = fullPath.LastIndexOf('/');
-
-            if (slashPos == -1)
-            {
-              // tif dir files are in the root of the bucket, so we want to skip those
-              tifBucketFiles++;
-              skippedBucketFiles++;
-              continue;
-            }
-            else
-            {
-              string dir = fullPath[0..slashPos];
+              string dir = slashPos > 0 ? fullPath[0..slashPos]:"";
               string filename = fullPath[(slashPos + 1)..];
               int dotLoc = filename.LastIndexOf('.');
               string name = (dotLoc == -1) ? filename : filename[0..dotLoc];
               string ext = (dotLoc == -1) ? "" : filename[(dotLoc + 1)..].ToLower();
-              
+
+            if (slashPos == -1)
+            {
+              // tif dir files are in the root of the bucket, so we want to skip those
+              artList.AddBucketFile(dir, name, ext);
+              JPGBucketFiles++;
+
+              tifBucketFiles++;
+              continue;
+            }
+            else
+            {
+
               Console.WriteLine($"dir: {dir}, filename: {filename}, name: {name}, ext: {ext}");
-              
+
               if (ext == "pdf")
               {
                 skippedBucketFiles++;
                 continue;
               }
 
-              switch(dir)
+              switch (dir)
               {
                 case "jpg":
                   if (ext == "jpg")
@@ -295,7 +297,7 @@ public class ArtworkHTML
                     Console.WriteLine($"Expected jpg extension but found: {ext} in file: {fullPath}");
                     skippedBucketFiles++;
                     continue;
-                  } 
+                  }
                   break;
                 case "scans":
                   scanBucketFiles++;
@@ -310,10 +312,10 @@ public class ArtworkHTML
             }
 
 
-//            Console.WriteLine(obj.Key);
-           // skippedBucketFiles++;
+            //            Console.WriteLine(obj.Key);
+            // skippedBucketFiles++;
           }
-            
+
         }
 
         request.ContinuationToken = response.NextContinuationToken;
@@ -321,9 +323,9 @@ public class ArtworkHTML
 
       Console.WriteLine($"Total files in bucket: {totalBucketFiles}");
       Console.WriteLine($"Total JPG files in bucket: {JPGBucketFiles}");
-      Console.WriteLine($"Total scan JPG files in bucket: {scanJPGBucketFiles}");   
+      Console.WriteLine($"Total scan JPG files in bucket: {scanJPGBucketFiles}");
       Console.WriteLine($"Total scan files in bucket: {scanBucketFiles}");
-      Console.WriteLine($"Total tif files in bucket: {tifBucketFiles}");  
+      Console.WriteLine($"Total tif files in bucket: {tifBucketFiles}");
     }
 
     catch (AmazonS3Exception ex)
@@ -336,19 +338,19 @@ public class ArtworkHTML
       Console.WriteLine($"Error: {ex.Message}");
     }
 
-        /*
-        foreach (Amazon.S3.Model.S3Object obj in response.S3Objects)
-        {
-          totalFiles++;
-          
-          Console.WriteLine($"Key: {obj.Key}");
-          Console.WriteLine($"  Size: {FormatBytes(obj.Size ?? 0)}");
-          Console.WriteLine($"  Last Modified: {obj.LastModified}");
-          Console.WriteLine($"  Storage Class: {obj.StorageClass}");
-          Console.WriteLine();
-        }
+    /*
+    foreach (Amazon.S3.Model.S3Object obj in response.S3Objects)
+    {
+      totalFiles++;
 
-        request.ContinuationToken = response.NextContinuationToken;
+      Console.WriteLine($"Key: {obj.Key}");
+      Console.WriteLine($"  Size: {FormatBytes(obj.Size ?? 0)}");
+      Console.WriteLine($"  Last Modified: {obj.LastModified}");
+      Console.WriteLine($"  Storage Class: {obj.StorageClass}");
+      Console.WriteLine();
+    }
+
+    request.ContinuationToken = response.NextContinuationToken;
 */
     /*    
       } while (response.IsTruncated == true);
@@ -389,72 +391,71 @@ public class ArtworkHTML
   }
 
   */
-     
 
+    // Now generate the HTML page using the artList
+    var html = new StringBuilder();
+    html.AppendLine(GetHtmlHeader("All Artworks - Keith Long Archive"));
 
-
-      // Now generate the HTML page using the artList
-      var html = new StringBuilder();
-      html.AppendLine(GetHtmlHeader("All Artworks - Keith Long Archive"));
-
-      html.AppendLine(@"
+    html.AppendLine(@"
     <div class='container'>
         <h1>All Artworks</h1>
         <p class='subtitle'><a href='index.html'>← Back to Home</a></p>");
 
-        html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
-        foreach (var artlist in artList.artworks) // while (await reader.ReadAsync())
-        {
-          Artwork art = artlist.Value;
+    html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
+    foreach (var artlist in artList.artworks) // while (await reader.ReadAsync())
+    {
+      Artwork art = artlist.Value;
 
-
-
-         if (art.states.HasFlag(StatesType.jpgFound))
+      if (art.states.HasFlag(StatesType.jpgFound))
       {
         Console.WriteLine("Found jpg for artwork: " + art.humanId);
-        
       }
 
 
-            html.AppendLine($@"<div class='gallery-item'>");
-            if ((art.states & StatesType.NoImage) == 0) // if we have an image
-            {
-              html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'>
+      html.AppendLine($@"<div class='gallery-item'>");
+      if ((art.states & StatesType.NoImage) == 0) // if we have an image
+      {
+        html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'>
                    <img src='{art.jpgURL}' title='(click for full size)'/>
                     </a><br/>
                     <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
-            }
-            html.AppendLine($"  <div class='desc'>");
-            html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
-            html.AppendLine($"    {BlankOrWithBR(art.ctDate.ToShortDateString(), "  ")}");
-            html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
-            html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  ")}");
-            html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: ")}");
-            html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
-            html.AppendLine($"    {BlankOrWithBR(art.humanId, "  ")}");
-            html.AppendLine($"  </div>");
+      }
+      html.AppendLine($"  <div class='desc'>");
+      html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.ctDate.ToShortDateString(), "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.humanId, "  ")}");
+      html.AppendLine($"  </div>");
 
-            html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>",art.errors)}</div>");
+      html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>", art.errors)}</div>");
 
-            if (art.states.HasFlag(StatesType.jpgFound))
-              html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
+      if (art.states.HasFlag(StatesType.noDB))
+        html.AppendLine($"<div class='desc'>Bucket name: {art.iFileName}<br/></div>");
 
-            html.AppendLine($"</div>  <!-- gallery item -->");
-        }
+      if (art.states.HasFlag(StatesType.jpgFound))
+        html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
+      if (art.states.HasFlag(StatesType.tifFound))
+        html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
 
-        html.AppendLine(@"</div>");
-        html.AppendLine(GetHtmlFooter());
-
-        await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "artworksplus.html"), html.ToString());
+      html.AppendLine($"</div>  <!-- gallery item -->");
     }
 
+    html.AppendLine(@"</div>");
+    html.AppendLine(GetHtmlFooter());
 
-    private async Task GenerateArtworkListPageOld()
-    {
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync();
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "artworksplus.html"), html.ToString());
+  }
 
-        var sql = @"
+
+  private async Task GenerateArtworkListPageOld()
+  {
+    await using var connection = new NpgsqlConnection(_connectionString);
+    await connection.OpenAsync();
+
+    var sql = @"
             SELECT
                 id_field,
                 iFileName,
@@ -471,71 +472,71 @@ public class ArtworkHTML
             FROM artwork
             ORDER BY human_readable_id ASC NULLS LAST";
 
-        await using var cmd = new NpgsqlCommand(sql, connection);
-        await using var reader = await cmd.ExecuteReaderAsync();
+    await using var cmd = new NpgsqlCommand(sql, connection);
+    await using var reader = await cmd.ExecuteReaderAsync();
 
-        var html = new StringBuilder();
-        html.AppendLine(GetHtmlHeader("All Artworks - Keith Long Archive"));
+    var html = new StringBuilder();
+    html.AppendLine(GetHtmlHeader("All Artworks - Keith Long Archive"));
 
-        html.AppendLine(@"
+    html.AppendLine(@"
     <div class='container'>
         <h1>All Artworks</h1>
         <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
         ");
 
-        html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
-        while (await reader.ReadAsync())
-        {
-            var id = reader.IsDBNull(0) ? "" : reader.GetInt32(0).ToString();
-            var iFileName = reader.IsDBNull(1) ? "" : reader.GetString(1);
-            var title = reader.IsDBNull(2) ? "" : reader.GetString(2);
-            var series = reader.IsDBNull(3) ? "" : reader.GetString(3);
-            var ctDate = reader.IsDBNull(4) ? "" : reader.GetDateTime(4).ToString("yyyy-MM-dd");
-            var medium = reader.IsDBNull(5) ? "" : reader.GetString(5);
-            var dimensions = reader.IsDBNull(6) ? "" : reader.GetString(6);
-            var foldDimensions = reader.IsDBNull(7) ? "" : reader.GetString(7);
-            var location = reader.IsDBNull(8) ? "" : reader.GetString(8);
-            var notes = reader.IsDBNull(9) ? "" : reader.GetString(9);
-            var humanId = reader.IsDBNull(10) ? "" : reader.GetString(10);
-            var image_ids = reader.IsDBNull(11) ? "" : reader.GetString(11);
+    html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
+    while (await reader.ReadAsync())
+    {
+      var id = reader.IsDBNull(0) ? "" : reader.GetInt32(0).ToString();
+      var iFileName = reader.IsDBNull(1) ? "" : reader.GetString(1);
+      var title = reader.IsDBNull(2) ? "" : reader.GetString(2);
+      var series = reader.IsDBNull(3) ? "" : reader.GetString(3);
+      var ctDate = reader.IsDBNull(4) ? "" : reader.GetDateTime(4).ToString("yyyy-MM-dd");
+      var medium = reader.IsDBNull(5) ? "" : reader.GetString(5);
+      var dimensions = reader.IsDBNull(6) ? "" : reader.GetString(6);
+      var foldDimensions = reader.IsDBNull(7) ? "" : reader.GetString(7);
+      var location = reader.IsDBNull(8) ? "" : reader.GetString(8);
+      var notes = reader.IsDBNull(9) ? "" : reader.GetString(9);
+      var humanId = reader.IsDBNull(10) ? "" : reader.GetString(10);
+      var image_ids = reader.IsDBNull(11) ? "" : reader.GetString(11);
 
-            bool haveImg = !string.IsNullOrEmpty(iFileName);
-            var tifURL = haveImg ? "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/" + iFileName + ".tif" : "";
-            var imgURL = haveImg ? "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/jpg/" + iFileName + ".jpg" : "";
+      bool haveImg = !string.IsNullOrEmpty(iFileName);
+      var tifURL = haveImg ? "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/" + iFileName + ".tif" : "";
+      var imgURL = haveImg ? "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/jpg/" + iFileName + ".jpg" : "";
 
-            html.AppendLine($@"<div class='gallery-item'>");
-            if (haveImg)
-            {
-                html.AppendLine($@"  <a href='{imgURL}' target='_blank' rel='noopener noreferrer'>
+      html.AppendLine($@"<div class='gallery-item'>");
+      if (haveImg)
+      {
+        html.AppendLine($@"  <a href='{imgURL}' target='_blank' rel='noopener noreferrer'>
                      <img src='{imgURL}' title='(click for full size)'/>
                     </a><br/>
                     <div class='desc'><a class='desc' href='{tifURL}'>[tif file]</a></div>");
-            }
-            html.AppendLine($"  <div class='desc'>");
-            html.AppendLine($"    {BlankOrWithBR(title, "  ")}");
-            html.AppendLine($"    {BlankOrWithBR(ctDate, "  ")}");
-            html.AppendLine($"    {BlankOrWithBR(medium, "  ")}");
-            html.AppendLine($"    {BlankOrWithBR(dimensions, "  ")}");
-            html.AppendLine($"    {BlankOrWithBR(foldDimensions, "   Folded: ")}");
-            html.AppendLine($"    {BlankOrWithBR(notes, "  Notes: ")}");
-            html.AppendLine($"    {BlankOrWithBR(humanId, "  ")}");
-            html.AppendLine($"  </div>");
+      }
+      html.AppendLine($"  <div class='desc'>");
+      html.AppendLine($"    {BlankOrWithBR(title, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(ctDate, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(medium, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(dimensions, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(foldDimensions, "   Folded: ")}");
+      html.AppendLine($"    {BlankOrWithBR(notes, "  Notes: ")}");
+      html.AppendLine($"    {BlankOrWithBR(humanId, "  ")}");
+      html.AppendLine($"  </div>");
 
-            html.AppendLine($"</div>  <!-- gallery item -->");
-        }
-
-        html.AppendLine(@"</div>");
-        html.AppendLine(GetHtmlFooter());
-
-        await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "artworks.html"), html.ToString());
+      html.AppendLine($"</div>  <!-- gallery item -->");
     }
 
-    private async Task GenerateSeriesPages()
-    {
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync();
+    html.AppendLine(@"</div>");
+    html.AppendLine(GetHtmlFooter());
 
-        var seriesSql = @"
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "artworks.html"), html.ToString());
+  }
+
+  private async Task GenerateSeriesPages()
+  {
+    await using var connection = new NpgsqlConnection(_connectionString);
+    await connection.OpenAsync();
+
+    var seriesSql = @"
             SELECT
                 series,
                 COUNT(*) as count,
@@ -546,48 +547,48 @@ public class ArtworkHTML
             GROUP BY series
             ORDER BY count DESC";
 
-        var html = new StringBuilder();
-        html.AppendLine(GetHtmlHeader("Artworks by Series - Keith Long Archive"));
-        html.AppendLine(@"
+    var html = new StringBuilder();
+    html.AppendLine(GetHtmlHeader("Artworks by Series - Keith Long Archive"));
+    html.AppendLine(@"
     <div class='container'>
         <h1>Artworks by Series</h1>
         <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
 
         <div class='series-grid'>");
 
-        await using var cmd = new NpgsqlCommand(seriesSql, connection);
-        await using var reader = await cmd.ExecuteReaderAsync();
+    await using var cmd = new NpgsqlCommand(seriesSql, connection);
+    await using var reader = await cmd.ExecuteReaderAsync();
 
-        while (await reader.ReadAsync())
-        {
-            var series = reader.GetString(0);
-            var count = reader.GetInt32(1);
-            var firstDate = reader.IsDBNull(2) ? null : reader.GetDateTime(2).ToString("yyyy");
-            var lastDate = reader.IsDBNull(3) ? null : reader.GetDateTime(3).ToString("yyyy");
-            var dateRange = (firstDate == lastDate) ? firstDate : $"{firstDate} - {lastDate}";
+    while (await reader.ReadAsync())
+    {
+      var series = reader.GetString(0);
+      var count = reader.GetInt32(1);
+      var firstDate = reader.IsDBNull(2) ? null : reader.GetDateTime(2).ToString("yyyy");
+      var lastDate = reader.IsDBNull(3) ? null : reader.GetDateTime(3).ToString("yyyy");
+      var dateRange = (firstDate == lastDate) ? firstDate : $"{firstDate} - {lastDate}";
 
-            html.AppendLine($@"
+      html.AppendLine($@"
             <div class='series-card'>
                 <h3>{EscapeHtml(series)}</h3>
                 <div class='series-count'>{count} artwork{(count != 1 ? "s" : "")}</div>
                 <div class='series-date'>{dateRange}</div>
             </div>");
-        }
-
-        html.AppendLine(@"
-        </div>
-    </div>");
-        html.AppendLine(GetHtmlFooter());
-
-        await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "series.html"), html.ToString());
     }
 
-    private async Task GenerateLocationPages()
-    {
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync();
+    html.AppendLine(@"
+        </div>
+    </div>");
+    html.AppendLine(GetHtmlFooter());
 
-        var locationSql = @"
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "series.html"), html.ToString());
+  }
+
+  private async Task GenerateLocationPages()
+  {
+    await using var connection = new NpgsqlConnection(_connectionString);
+    await connection.OpenAsync();
+
+    var locationSql = @"
             SELECT
                 location,
                 COUNT(*) as count
@@ -596,41 +597,41 @@ public class ArtworkHTML
             GROUP BY location
             ORDER BY count DESC";
 
-        var html = new StringBuilder();
-        html.AppendLine(GetHtmlHeader("Artworks by Location - Keith Long Archive"));
-        html.AppendLine(@"
+    var html = new StringBuilder();
+    html.AppendLine(GetHtmlHeader("Artworks by Location - Keith Long Archive"));
+    html.AppendLine(@"
     <div class='container'>
         <h1>Artworks by Location</h1>
         <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
 
         <div class='location-grid'>");
 
-        await using var cmd = new NpgsqlCommand(locationSql, connection);
-        await using var reader = await cmd.ExecuteReaderAsync();
+    await using var cmd = new NpgsqlCommand(locationSql, connection);
+    await using var reader = await cmd.ExecuteReaderAsync();
 
-        while (await reader.ReadAsync())
-        {
-            var location = reader.GetString(0);
-            var count = reader.GetInt32(1);
+    while (await reader.ReadAsync())
+    {
+      var location = reader.GetString(0);
+      var count = reader.GetInt32(1);
 
-            html.AppendLine($@"
+      html.AppendLine($@"
             <div class='location-card'>
                 <h3>{EscapeHtml(location)}</h3>
                 <div class='location-count'>{count} artwork{(count != 1 ? "s" : "")}</div>
             </div>");
-        }
-
-        html.AppendLine(@"
-        </div>
-    </div>");
-        html.AppendLine(GetHtmlFooter());
-
-        await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "locations.html"), html.ToString());
     }
 
-    private async Task GenerateStylesheet()
-    {
-        var css = @"
+    html.AppendLine(@"
+        </div>
+    </div>");
+    html.AppendLine(GetHtmlFooter());
+
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "locations.html"), html.ToString());
+  }
+
+  private async Task GenerateStylesheet()
+  {
+    var css = @"
 * {
     margin: 0;
     padding: 0;
@@ -862,12 +863,12 @@ footer {
 }
 ";
 
-        await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "style.css"), css);
-    }
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "style.css"), css);
+  }
 
-    private string GetHtmlHeader(string title)
-    {
-        return $@"<!DOCTYPE html>
+  private string GetHtmlHeader(string title)
+  {
+    return $@"<!DOCTYPE html>
 <html lang='en'>
 <head>
     <meta charset='UTF-8'>
@@ -876,25 +877,25 @@ footer {
     <link rel='stylesheet' href='style.css'>
 </head>
 <body>";
-    }
+  }
 
-    private string GetHtmlFooter()
-    {
-        return $@"
+  private string GetHtmlFooter()
+  {
+    return $@"
     <footer>
         <p>Keith Long Archive | Generated {DateTime.Now:MMMM d, yyyy}</p>
     </footer>
 </body>
 </html>";
-    }
+  }
 
-    private string EscapeHtml(string? text)
-    {
-        if (string.IsNullOrEmpty(text)) return "";
-        return text.Replace("&", "&amp;")
-                   .Replace("<", "&lt;")
-                   .Replace(">", "&gt;")
-                   .Replace("\"", "&quot;")
-                   .Replace("'", "&#39;");
-    }
+  private string EscapeHtml(string? text)
+  {
+    if (string.IsNullOrEmpty(text)) return "";
+    return text.Replace("&", "&amp;")
+               .Replace("<", "&lt;")
+               .Replace(">", "&gt;")
+               .Replace("\"", "&quot;")
+               .Replace("'", "&#39;");
+  }
 }

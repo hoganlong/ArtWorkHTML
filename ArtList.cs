@@ -15,7 +15,7 @@ namespace ArtWorkHTML
     undef3 = 8,
     undef4 = 16,
     undef5 = 32,
-    undef6 = 64
+    noDB = 64
   }
 
   public class ArtList
@@ -49,38 +49,36 @@ namespace ArtWorkHTML
     public void AddBucketFile(string dir, string name, string ext)
     {
       var listElement = artworks.Where(x => x.Value.iFileName == name).FirstOrDefault();
+      var artwork = new Artwork(name);;
+
       
       if (listElement.Key == null)
       {
         // file in bucket that doesn't match any of our artwork names create artwork for it.
-        artworks["unknow "+dupNumber.ToString()] = new Artwork(name);
+        artwork.states |= StatesType.noDB; // Set noDB state
+        artwork.iFileName = name;  // set the iFileName to the name of the file we found in the bucket so we can find it later if we need to
+        artworks["unknow "+dupNumber.ToString()] = artwork;
         dupNumber++;
       }
       else
       {
         // artwork for out name
-        var artwork = listElement.Value;
-
-        if (ext == "jpg")
-        {
-          // should check if in correct (expected) location in bucket, but for now just set the state
-          artwork.states |= StatesType.jpgFound; // Set jpg found state
-        }
-        else if (ext == "tif")
-        {
-          // should check if in correct (expected) location in bucket, but for now just set the state
-          artwork.states |= StatesType.tifFound; // Set tif found state
-        }
+        artwork = listElement.Value;
       }
 
-
+      if (ext == "jpg")
+      {
+        // should check if in correct (expected) location in bucket, but for now just set the state
+        artwork.states |= StatesType.jpgFound; // Set jpg found state
+      }
+      else if (ext == "tif")
+      {
+        // should check if in correct (expected) location in bucket, but for now just set the state
+        artwork.states |= StatesType.tifFound; // Set tif found state
+      }
     }
-
-
-
-  }
+  } // ArtList
   
-
   public class Artwork
   {
     static readonly string baseURL = "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/";
@@ -158,9 +156,5 @@ namespace ArtWorkHTML
       this.errors.Add($"Was found on server and not DB");
 
     }
-
-
-
-
-  }
-}
+  } // Artwork
+}  // ArtWorkHTML
