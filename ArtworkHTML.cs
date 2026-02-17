@@ -175,7 +175,6 @@ public class ArtworkHTML
           select array_to_string(array_agg(id_field), ', ') as ids, artwork_id, lview
           from img 
           group by artwork_id, img.lview 
-           
         )
         SELECT
           a.id_field, a.iFileName, a.title, a.series, a.create_dt, a.medium, a.dimensions, a.FOLDED_DIMENSIONS,
@@ -188,7 +187,8 @@ public class ArtworkHTML
         LEFT JOIN imgGroup ai_back ON a.airtable_id = ai_back.artwork_id AND ai_back.lview    ='Back'
         LEFT JOIN imgGroup ai_front ON a.airtable_id = ai_front.artwork_id AND ai_front.lview ='Fron'
         LEFT JOIN imgGroup ai_paper ON a.airtable_id = ai_paper.artwork_id AND ai_paper.lview ='Pape'
-        LEFT JOIN imgGroup ai_polaroid ON a.airtable_id = ai_polaroid.artwork_id AND ai_polaroid.lview ='Pola'";
+        LEFT JOIN imgGroup ai_polaroid ON a.airtable_id = ai_polaroid.artwork_id AND ai_polaroid.lview ='Pola'
+        ORDER BY a.human_readable_id, a.create_dt ASC NULLS LAST";
 
     await using var cmd = new NpgsqlCommand(sql, connection);
     await using var reader = await cmd.ExecuteReaderAsync();
@@ -502,8 +502,8 @@ public class ArtworkHTML
         // Add thumbnail buttons for additional views
         var thumbnails = new List<(string label, int[]? id)>
         {
-          ("Back", art.backId),
           ("Front", art.frontId),
+          ("Back", art.backId),
           ("Paper", art.paperId),
           ("Polaroid", art.polaroidId)
         };
@@ -514,15 +514,18 @@ public class ArtworkHTML
         {
           if (thumb.id is not null && thumb.id.Length > 0)
           {
+            bool hasMult = thumb.id.Length > 1;
+            int curNum = 1;
             // We have at least one thumbnail for this view, so we can break out of the loop and generate buttons
             foreach (var id in thumb.id)
             {
               if (id != 0)
               {
                 var thumbUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "small");
-                var largeUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "large");
-                thumbButtons.Add($"<a href='{largeUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{thumb.label} view'><img src='{thumbUrl}' width='36' height='36' /></a>");
+                var fullUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "full");
+                thumbButtons.Add($"<a href='{fullUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{thumb.label}{(hasMult?" "+curNum.ToString(): "")}'><img src='{thumbUrl}' width='36' height='36' /></a>");
               }
+              curNum++;
             }
           }
         }
