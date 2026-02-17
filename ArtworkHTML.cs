@@ -196,13 +196,13 @@ public class ArtworkHTML
     while (await reader.ReadAsync())
     {
       var backId = reader.IsDBNull(12) ? null : reader.GetString(12).Split(',').
-              Select(s => int.TryParse(s.Trim(), out int id) ? (int?)id : null).Where(id => id.HasValue).Select(id => id.Value).ToArray();
+              Select(s => int.TryParse(s.Trim(), out int id) ? (int?)id : null).Where(id => id.HasValue).Select(id => id!.Value).ToArray();
       var frontId = reader.IsDBNull(13) ? null : reader.GetString(13).Split(',').
-              Select(s => int.TryParse(s.Trim(), out int id) ? (int?)id : null).Where(id => id.HasValue).Select(id => id.Value).ToArray();
+              Select(s => int.TryParse(s.Trim(), out int id) ? (int?)id : null).Where(id => id.HasValue).Select(id => id!.Value).ToArray();
       var paperId = reader.IsDBNull(14) ? null : reader.GetString(14).Split(',').
-              Select(s => int.TryParse(s.Trim(), out int id) ? (int?)id : null).Where(id => id.HasValue).Select(id => id.Value).ToArray();
+              Select(s => int.TryParse(s.Trim(), out int id) ? (int?)id : null).Where(id => id.HasValue).Select(id => id!.Value).ToArray();
       var polaroidId = reader.IsDBNull(15) ? null : reader.GetString(15).Split(',').
-              Select(s => int.TryParse(s.Trim(), out int id) ? (int?)id : null).Where(id => id.HasValue).Select(id => id.Value).ToArray();
+              Select(s => int.TryParse(s.Trim(), out int id) ? (int?)id : null).Where(id => id.HasValue).Select(id => id!.Value).ToArray();
 
       Artwork artwork = new(reader.GetInt32(0).ToString(), reader.IsDBNull(1) ? "" : reader.GetString(1),
          reader.IsDBNull(2) ? "" : reader.GetString(2), reader.IsDBNull(3) ? "" : reader.GetString(3),
