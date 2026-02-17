@@ -13,7 +13,13 @@ body {
 }
 
 .container {
-    max-width: 850px;
+    max-width: 80%;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.oldcontainer {
+    max-width: 1400px;
     margin: 0 auto;
     padding: 20px;
 }
@@ -87,6 +93,54 @@ h1 {
     background: #2980b9;
 }
 
+.artwork-table {
+    width: 100%;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.artwork-table thead {
+    background: #34495e;
+    color: white;
+}
+
+.artwork-table th {
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+}
+
+.artwork-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.artwork-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.id-cell {
+    font-family: 'Courier New', monospace;
+    color: #7f8c8d;
+    font-size: 0.9em;
+}
+
+.title-cell {
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.date-cell {
+    white-space: nowrap;
+}
+
+.dimensions-cell {
+    font-size: 0.9em;
+    color: #7f8c8d;
+}
+
 .series-grid, .location-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -132,33 +186,67 @@ footer {
     font-size: 0.9em;
 }
 
-div.gallery {
+  div.gallery 
+  {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-start;
-}
-
-div.gallery-item {
+  }
+  div.gallery-item
+  {
     margin: 5px;
     border: 1px solid #ccc;
     width: 250px;
-}
-
-div.gallery-item:hover {
+  }
+  div.gallery-item:hover
+  {
     border: 1px solid #777;
-}
-
-div.gallery-item img {
+  }
+  div.gallery-item img
+  {
     width: 100%;
     height: auto;
-}
-
-div.gallery-item div.desc {
+  }
+  div.gallery-item div.desc
+  {
     padding: 5px;
     text-align: center;
-}
+  }
+
+  .thumb-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    padding: 5px;
+    background: #f8f9fa;
+  }
+
+  .thumb-button {
+    display: inline-block;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    transition: border-color 0.2s;
+  }
+
+  .thumb-button:hover {
+    border-color: #3498db;
+  }
+
+  .thumb-button img {
+    display: block;
+    width: 36px;
+    height: 36px;
+  }
 
 @media (max-width: 768px) {
+    .artwork-table {
+        font-size: 0.9em;
+    }
+
+    .artwork-table th, .artwork-table td {
+        padding: 8px 10px;
+    }
+
     h1 {
         font-size: 2em;
     }

@@ -98,6 +98,12 @@ namespace ArtWorkHTML
     public string image_ids = new("");
     public List<string> errors = new();
 
+    // Artwork image IDs for different views
+    public int? backId = null;
+    public int? frontId = null;
+    public int? paperId = null;
+    public int? polaroidId = null;
+
     public StatesType states=StatesType.NoImage; 
 
     // Direved utility elements
@@ -105,7 +111,7 @@ namespace ArtWorkHTML
     public string jpgURL = new("");
 
     public Artwork(string id, string iFileName, string title, string series, DateTime ctDate, string medium,string dimensions, string foldedDimensions,
-       string location, string notes, string humanId, string image_ids)
+       string location, string notes, string humanId, string image_ids, int? backId = null, int? frontId = null, int? paperId = null, int? polaroidId = null)
     {
       this.id = id ?? "";
       this.iFileName = iFileName ?? "";
@@ -119,10 +125,21 @@ namespace ArtWorkHTML
       this.notes = notes ?? "";
       this.humanId = humanId ?? "";
       this.image_ids = image_ids ?? "";
-      
+      this.backId = backId;
+      this.frontId = frontId;
+      this.paperId = paperId;
+      this.polaroidId = polaroidId;
+
       if (string.IsNullOrEmpty(iFileName))
       { // set no image state if we don't have an image file name
         this.states |= StatesType.NoImage;
+        // Use Front image as fallback if available
+        if (frontId.HasValue)
+        {
+          this.states &= ~StatesType.NoImage;
+          jpgURL = $"{baseURL}atch/artwork_{frontId.Value}_large.jpg";
+          this.errors.Add("Bucket image not found");
+        }
       }
       else
       { // Remove no image state if we have an image file name

@@ -25,19 +25,45 @@ public class ArtworkHTML
   public async Task GenerateAllPages()
   {
     await GenerateIndexPage();
+    await GenerateStatisticsPage();
     await GenerateArtworkListPage();
     await GenerateSeriesPages();
     await GenerateLocationPages();
     await GenerateStylesheet();
 
-    Console.WriteLine("  ✓ index.html - Main landing page");
-    Console.WriteLine("  ✓ artworks.html - Complete artwork list");
+    Console.WriteLine("  ✓ index.html - Landing page");
+    Console.WriteLine("  ✓ statistics.html - Archive statistics");
+    Console.WriteLine("  ✓ artworksplus.html - Complete artwork list");
     Console.WriteLine("  ✓ series.html - Artworks by series");
     Console.WriteLine("  ✓ locations.html - Artworks by location");
     Console.WriteLine("  ✓ style.css - Stylesheet");
   }
 
   private async Task GenerateIndexPage()
+  {
+    var html = new StringBuilder();
+    html.AppendLine(GetHtmlHeader("Keith Long Archive"));
+    html.AppendLine(@"
+    <div class='container landing-page'>
+        <div class='landing-header'>
+            <h1>Keith Long Archive</h1>
+            <p class='subtitle'>Digital Archive of Artwork Collection</p>
+        </div>
+
+        <div class='navigation'>
+            <h2>Browse the Archive</h2>
+            <a href='statistics.html' class='nav-button'>📊 Archive Statistics</a>
+            <a href='artworksplus.html' class='nav-button'>🖼️ Browse All Artworks</a>
+            <a href='series.html' class='nav-button'>📚 View by Series</a>
+            <a href='locations.html' class='nav-button'>📍 View by Location</a>
+        </div>
+    </div>");
+    html.AppendLine(GetHtmlFooter());
+
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "index.html"), html.ToString());
+  }
+
+  private async Task GenerateStatisticsPage()
   {
     await using var connection = new NpgsqlConnection(_connectionString);
     await connection.OpenAsync();
@@ -68,11 +94,11 @@ public class ArtworkHTML
     }
 
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader("Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Archive Statistics - Keith Long Archive"));
     html.AppendLine(@"
     <div class='container'>
-        <h1>Keith Long Archive</h1>
-        <p class='subtitle'>Digital Archive of Artwork Collection</p>
+        <h1>Archive Statistics</h1>
+        <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
 
         <div class='stats-grid'>
             <div class='stat-card'>
@@ -94,14 +120,14 @@ public class ArtworkHTML
         </div>
 
         <div class='navigation'>
-            <a href='artworks.html' class='nav-button'>Browse All Artworks</a>
+            <a href='artworksplus.html' class='nav-button'>Browse All Artworks</a>
             <a href='series.html' class='nav-button'>View by Series</a>
             <a href='locations.html' class='nav-button'>View by Location</a>
         </div>
     </div>");
     html.AppendLine(GetHtmlFooter());
 
-    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "index.html"), html.ToString());
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "statistics.html"), html.ToString());
   }
 
   private static string BlankOrWithBR(string inS, string prepend = "")
@@ -117,6 +143,9 @@ public class ArtworkHTML
 
   private async Task GenerateArtworkListPage()
   {
+    // URL templates for S3 images
+    const string S3_ARTWORK_IMAGE_URL = "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/atch/artwork_{0}_{1}.jpg";
+
     ArtList artList = new();
 
     // Get all artworks from the database
@@ -125,22 +154,36 @@ public class ArtworkHTML
 
     var sql = @"
         SELECT
-          id_field, iFileName, title, series, create_dt, medium, dimensions, FOLDED_DIMENSIONS,
-          location, notes, human_readable_id, artwork_image_id
-        FROM artwork
-        ORDER BY human_readable_id ASC NULLS LAST";
+          a.id_field, a.iFileName, a.title, a.series, a.create_dt, a.medium, a.dimensions, a.FOLDED_DIMENSIONS,
+          a.location, a.notes, a.human_readable_id, a.artwork_image_id,
+          ai_back.id_field as back_id,
+          ai_front.id_field as front_id,
+          ai_paper.id_field as paper_id,
+          ai_polaroid.id_field as polaroid_id
+        FROM artwork a
+        LEFT JOIN artwork_image ai_back ON a.airtable_id = ai_back.artwork_id AND ai_back.view LIKE 'Back%'
+        LEFT JOIN artwork_image ai_front ON a.airtable_id = ai_front.artwork_id AND ai_front.view LIKE 'Front%'
+        LEFT JOIN artwork_image ai_paper ON a.airtable_id = ai_paper.artwork_id AND ai_paper.view LIKE 'Paper%'
+        LEFT JOIN artwork_image ai_polaroid ON a.airtable_id = ai_polaroid.artwork_id AND ai_polaroid.view LIKE 'Polaroid%'
+        ORDER BY a.human_readable_id ASC NULLS LAST";
 
     await using var cmd = new NpgsqlCommand(sql, connection);
     await using var reader = await cmd.ExecuteReaderAsync();
 
     while (await reader.ReadAsync())
     {
+      var backId = reader.IsDBNull(12) ? (int?)null : reader.GetInt32(12);
+      var frontId = reader.IsDBNull(13) ? (int?)null : reader.GetInt32(13);
+      var paperId = reader.IsDBNull(14) ? (int?)null : reader.GetInt32(14);
+      var polaroidId = reader.IsDBNull(15) ? (int?)null : reader.GetInt32(15);
+
       Artwork artwork = new(reader.GetInt32(0).ToString(), reader.IsDBNull(1) ? "" : reader.GetString(1),
          reader.IsDBNull(2) ? "" : reader.GetString(2), reader.IsDBNull(3) ? "" : reader.GetString(3),
           reader.IsDBNull(4) ? DateTime.MinValue : reader.GetDateTime(4), reader.IsDBNull(5) ? "" : reader.GetString(5),
           reader.IsDBNull(6) ? "" : reader.GetString(6), reader.IsDBNull(7) ? "" : reader.GetString(7),
           reader.IsDBNull(8) ? "" : reader.GetString(8), reader.IsDBNull(9) ? "" : reader.GetString(9),
-          reader.IsDBNull(10) ? "" : reader.GetString(10), reader.IsDBNull(11) ? "" : reader.GetString(11));
+          reader.IsDBNull(10) ? "" : reader.GetString(10), reader.IsDBNull(11) ? "" : reader.GetString(11),
+          backId, frontId, paperId, polaroidId);
 
       artList.AddArtwork(artwork);
     } // while reader.ReadAsync()
@@ -171,6 +214,7 @@ public class ArtworkHTML
       int scanBucketFiles = 0;
       int scanJPGBucketFiles = 0;
       int JPGBucketFiles = 0;
+      int atchBucketFiles = 0;
 
       //      string title = $"Keith Long Archive Polaroid Image List (generated - {DateTime.Now.ToLongDateString()} at {DateTime.Now.ToLongTimeString()}";
       /*
@@ -275,7 +319,7 @@ public class ArtworkHTML
             else
             {
 
-              Console.WriteLine($"dir: {dir}, filename: {filename}, name: {name}, ext: {ext}");
+//              Console.WriteLine($"dir: {dir}, filename: {filename}, name: {name}, ext: {ext}");
 
               if (ext == "pdf")
               {
@@ -305,6 +349,10 @@ public class ArtworkHTML
                 case "scans/jpg":
                   scanJPGBucketFiles++;
                   break;
+                case "atch":
+                  atchBucketFiles++;
+                  // should really check if in correct (expected) location in bucket, but for now just set the state
+                  break;
                 default:
                   Console.WriteLine($"Unknown directory: {dir} in file: {fullPath}");
                   break;
@@ -326,6 +374,7 @@ public class ArtworkHTML
       Console.WriteLine($"Total scan JPG files in bucket: {scanJPGBucketFiles}");
       Console.WriteLine($"Total scan files in bucket: {scanBucketFiles}");
       Console.WriteLine($"Total tif files in bucket: {tifBucketFiles}");
+      Console.WriteLine($"Total attachment files in bucket: {atchBucketFiles}");
     }
 
     catch (AmazonS3Exception ex)
@@ -405,13 +454,14 @@ public class ArtworkHTML
     foreach (var artlist in artList.artworks) // while (await reader.ReadAsync())
     {
       Artwork art = artlist.Value;
-
+/*
       if (art.states.HasFlag(StatesType.jpgFound))
       {
         Console.WriteLine("Found jpg for artwork: " + art.humanId);
       }
 
 
+*/
       html.AppendLine($@"<div class='gallery-item'>");
       if ((art.states & StatesType.NoImage) == 0) // if we have an image
       {
@@ -419,6 +469,32 @@ public class ArtworkHTML
                    <img src='{art.jpgURL}' title='(click for full size)'/>
                     </a><br/>
                     <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
+
+        // Add thumbnail buttons for additional views
+        var thumbnails = new List<(string label, int? id)>
+        {
+          ("Back", art.backId),
+          ("Front", art.frontId),
+          ("Paper", art.paperId),
+          ("Polaroid", art.polaroidId)
+        };
+
+        var thumbButtons = thumbnails
+          .Where(t => t.id.HasValue)
+          .Select(t =>
+          {
+            var thumbUrl = string.Format(S3_ARTWORK_IMAGE_URL, t.id!.Value, "small");
+            var largeUrl = string.Format(S3_ARTWORK_IMAGE_URL, t.id!.Value, "large");
+            return $"<a href='{largeUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{t.label} view'><img src='{thumbUrl}' width='36' height='36' /></a>";
+          })
+          .ToList();
+
+        if (thumbButtons.Any())
+        {
+          html.AppendLine($"  <div class='thumb-buttons'>");
+          html.AppendLine($"    {string.Join(" ", thumbButtons)}");
+          html.AppendLine($"  </div>");
+        }
       }
       html.AppendLine($"  <div class='desc'>");
       html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
@@ -452,25 +528,38 @@ public class ArtworkHTML
 
   private async Task GenerateArtworkListPageOld()
   {
+    // URL templates for S3 images
+    const string S3_MAIN_JPG_URL = "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/jpg/{0}.jpg";
+    const string S3_MAIN_TIF_URL = "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/{0}.tif";
+    const string S3_ARTWORK_IMAGE_URL = "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/atch/artwork_{0}_{1}.jpg";
+
     await using var connection = new NpgsqlConnection(_connectionString);
     await connection.OpenAsync();
 
     var sql = @"
             SELECT
-                id_field,
-                iFileName,
-                title,
-                series,
-                create_dt,
-                medium,
-                dimensions,
-                FOLDED_DIMENSIONS,
-                location,
-                notes,
-                human_readable_id,
-                artwork_image_id
-            FROM artwork
-            ORDER BY human_readable_id ASC NULLS LAST";
+                a.id_field,
+                a.iFileName,
+                a.title,
+                a.series,
+                a.create_dt,
+                a.medium,
+                a.dimensions,
+                a.FOLDED_DIMENSIONS,
+                a.location,
+                a.notes,
+                a.human_readable_id,
+                a.artwork_image_id,
+                ai_back.id_field as back_id,
+                ai_front.id_field as front_id,
+                ai_paper.id_field as paper_id,
+                ai_polaroid.id_field as polaroid_id
+            FROM artwork a
+            LEFT JOIN artwork_image ai_back ON a.airtable_id = ai_back.artwork_id AND ai_back.view LIKE 'Back%'
+            LEFT JOIN artwork_image ai_front ON a.airtable_id = ai_front.artwork_id AND ai_front.view LIKE 'Front%'
+            LEFT JOIN artwork_image ai_paper ON a.airtable_id = ai_paper.artwork_id AND ai_paper.view LIKE 'Paper%'
+            LEFT JOIN artwork_image ai_polaroid ON a.airtable_id = ai_polaroid.artwork_id AND ai_polaroid.view LIKE 'Polaroid%'
+            ORDER BY a.human_readable_id ASC NULLS LAST";
 
     await using var cmd = new NpgsqlCommand(sql, connection);
     await using var reader = await cmd.ExecuteReaderAsync();
@@ -499,10 +588,21 @@ public class ArtworkHTML
       var notes = reader.IsDBNull(9) ? "" : reader.GetString(9);
       var humanId = reader.IsDBNull(10) ? "" : reader.GetString(10);
       var image_ids = reader.IsDBNull(11) ? "" : reader.GetString(11);
+      var backId = reader.IsDBNull(12) ? (int?)null : reader.GetInt32(12);
+      var frontId = reader.IsDBNull(13) ? (int?)null : reader.GetInt32(13);
+      var paperId = reader.IsDBNull(14) ? (int?)null : reader.GetInt32(14);
+      var polaroidId = reader.IsDBNull(15) ? (int?)null : reader.GetInt32(15);
 
       bool haveImg = !string.IsNullOrEmpty(iFileName);
-      var tifURL = haveImg ? "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/" + iFileName + ".tif" : "";
-      var imgURL = haveImg ? "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/jpg/" + iFileName + ".jpg" : "";
+      var tifURL = haveImg ? string.Format(S3_MAIN_TIF_URL, iFileName) : "";
+      var imgURL = haveImg ? string.Format(S3_MAIN_JPG_URL, iFileName) : "";
+
+      // If no main image but we have a Front large image, use that as fallback
+      if (!haveImg && frontId.HasValue)
+      {
+        imgURL = string.Format(S3_ARTWORK_IMAGE_URL, frontId.Value, "large");
+        haveImg = true;
+      }
 
       html.AppendLine($@"<div class='gallery-item'>");
       if (haveImg)
@@ -511,6 +611,32 @@ public class ArtworkHTML
                      <img src='{imgURL}' title='(click for full size)'/>
                     </a><br/>
                     <div class='desc'><a class='desc' href='{tifURL}'>[tif file]</a></div>");
+
+        // Add thumbnail buttons for additional views
+        var thumbnails = new List<(string label, int? id)>
+        {
+          ("Back", backId),
+          ("Front", frontId),
+          ("Paper", paperId),
+          ("Polaroid", polaroidId)
+        };
+
+        var thumbButtons = thumbnails
+          .Where(t => t.id.HasValue)
+          .Select(t =>
+          {
+            var thumbUrl = string.Format(S3_ARTWORK_IMAGE_URL, t.id!.Value, "small");
+            var largeUrl = string.Format(S3_ARTWORK_IMAGE_URL, t.id!.Value, "large");
+            return $"<a href='{largeUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{t.label} view'><img src='{thumbUrl}' width='36' height='36' /></a>";
+          })
+          .ToList();
+
+        if (thumbButtons.Any())
+        {
+          html.AppendLine($"  <div class='thumb-buttons'>");
+          html.AppendLine($"    {string.Join(" ", thumbButtons)}");
+          html.AppendLine($"  </div>");
+        }
       }
       html.AppendLine($"  <div class='desc'>");
       html.AppendLine($"    {BlankOrWithBR(title, "  ")}");
@@ -846,7 +972,30 @@ footer {
     text-align: center;
   }
 
+  .thumb-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    padding: 5px;
+    background: #f8f9fa;
+  }
 
+  .thumb-button {
+    display: inline-block;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    transition: border-color 0.2s;
+  }
+
+  .thumb-button:hover {
+    border-color: #3498db;
+  }
+
+  .thumb-button img {
+    display: block;
+    width: 36px;
+    height: 36px;
+  }
 
 @media (max-width: 768px) {
     .artwork-table {
@@ -876,7 +1025,11 @@ footer {
     <title>{EscapeHtml(title)}</title>
     <link rel='stylesheet' href='style.css'>
 </head>
-<body>";
+<body>
+<p>
+    This website is NOT open to the public.   It is in development.  All images and content are (c) Estate of Keith Long.
+</p>
+  ";
   }
 
   private string GetHtmlFooter()
