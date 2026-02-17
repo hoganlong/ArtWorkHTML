@@ -11,6 +11,14 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace ArtWorkHTML;
 
+public static class NullExtensions
+{
+    public static IEnumerable<T> NotNull<T>(this IEnumerable<T?> enumerable) where T : class
+    {
+        return enumerable.Where(e => e != null).Select(e => e!);
+    }
+}
+
 public class ArtworkHTML
 {
   private readonly string _connectionString;
@@ -153,29 +161,48 @@ public class ArtworkHTML
     await connection.OpenAsync();
 
     var sql = @"
+        with img as 
+        (
+          select ai.id_field, ai.artwork_id, LEFT(ai.view , 4) as lview 
+          from artwork_image ai 
+          where 
+            ai.view LIKE 'Back%' OR
+            ai.view LIKE 'Front%' OR
+            ai.view LIKE 'Paper%' OR
+            ai.view LIKE 'Polaroid%'
+        ), imgGroup as 
+        (
+          select array_to_string(array_agg(id_field), ', ') as ids, artwork_id, lview
+          from img 
+          group by artwork_id, img.lview 
+           
+        )
         SELECT
           a.id_field, a.iFileName, a.title, a.series, a.create_dt, a.medium, a.dimensions, a.FOLDED_DIMENSIONS,
           a.location, a.notes, a.human_readable_id, a.artwork_image_id,
-          ai_back.id_field as back_id,
-          ai_front.id_field as front_id,
-          ai_paper.id_field as paper_id,
-          ai_polaroid.id_field as polaroid_id
+          ai_back.ids as back_id,
+          ai_front.ids as front_id,
+          ai_paper.ids as paper_id,
+          ai_polaroid.ids as polaroid_id
         FROM artwork a
-        LEFT JOIN artwork_image ai_back ON a.airtable_id = ai_back.artwork_id AND ai_back.view LIKE 'Back%'
-        LEFT JOIN artwork_image ai_front ON a.airtable_id = ai_front.artwork_id AND ai_front.view LIKE 'Front%'
-        LEFT JOIN artwork_image ai_paper ON a.airtable_id = ai_paper.artwork_id AND ai_paper.view LIKE 'Paper%'
-        LEFT JOIN artwork_image ai_polaroid ON a.airtable_id = ai_polaroid.artwork_id AND ai_polaroid.view LIKE 'Polaroid%'
-        ORDER BY a.human_readable_id ASC NULLS LAST";
+        LEFT JOIN imgGroup ai_back ON a.airtable_id = ai_back.artwork_id AND ai_back.lview    ='Back'
+        LEFT JOIN imgGroup ai_front ON a.airtable_id = ai_front.artwork_id AND ai_front.lview ='Fron'
+        LEFT JOIN imgGroup ai_paper ON a.airtable_id = ai_paper.artwork_id AND ai_paper.lview ='Pape'
+        LEFT JOIN imgGroup ai_polaroid ON a.airtable_id = ai_polaroid.artwork_id AND ai_polaroid.lview ='Pola'";
 
     await using var cmd = new NpgsqlCommand(sql, connection);
     await using var reader = await cmd.ExecuteReaderAsync();
 
     while (await reader.ReadAsync())
     {
-      var backId = reader.IsDBNull(12) ? (int?)null : reader.GetInt32(12);
-      var frontId = reader.IsDBNull(13) ? (int?)null : reader.GetInt32(13);
-      var paperId = reader.IsDBNull(14) ? (int?)null : reader.GetInt32(14);
-      var polaroidId = reader.IsDBNull(15) ? (int?)null : reader.GetInt32(15);
+      var backId = reader.IsDBNull(12) ? null : reader.GetString(12).Split(',').
+              Select(s => int.TryParse(s.Trim(), out int id) ? (int?)id : null).Where(id => id.HasValue).Select(id => id.Value).ToArray();
+      var frontId = reader.IsDBNull(13) ? null : reader.GetString(13).Split(',').
+              Select(s => int.TryParse(s.Trim(), out int id) ? (int?)id : null).Where(id => id.HasValue).Select(id => id.Value).ToArray();
+      var paperId = reader.IsDBNull(14) ? null : reader.GetString(14).Split(',').
+              Select(s => int.TryParse(s.Trim(), out int id) ? (int?)id : null).Where(id => id.HasValue).Select(id => id.Value).ToArray();
+      var polaroidId = reader.IsDBNull(15) ? null : reader.GetString(15).Split(',').
+              Select(s => int.TryParse(s.Trim(), out int id) ? (int?)id : null).Where(id => id.HasValue).Select(id => id.Value).ToArray();
 
       Artwork artwork = new(reader.GetInt32(0).ToString(), reader.IsDBNull(1) ? "" : reader.GetString(1),
          reader.IsDBNull(2) ? "" : reader.GetString(2), reader.IsDBNull(3) ? "" : reader.GetString(3),
@@ -473,7 +500,7 @@ public class ArtworkHTML
                     <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
 
         // Add thumbnail buttons for additional views
-        var thumbnails = new List<(string label, int? id)>
+        var thumbnails = new List<(string label, int[]? id)>
         {
           ("Back", art.backId),
           ("Front", art.frontId),
@@ -481,17 +508,26 @@ public class ArtworkHTML
           ("Polaroid", art.polaroidId)
         };
 
-        var thumbButtons = thumbnails
-          .Where(t => t.id.HasValue)
-          .Select(t =>
-          {
-            var thumbUrl = string.Format(S3_ARTWORK_IMAGE_URL, t.id!.Value, "small");
-            var largeUrl = string.Format(S3_ARTWORK_IMAGE_URL, t.id!.Value, "large");
-            return $"<a href='{largeUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{t.label} view'><img src='{thumbUrl}' width='36' height='36' /></a>";
-          })
-          .ToList();
+        List<string> thumbButtons = [];
 
-        if (thumbButtons.Any())
+        foreach (var thumb in thumbnails)
+        {
+          if (thumb.id is not null && thumb.id.Length > 0)
+          {
+            // We have at least one thumbnail for this view, so we can break out of the loop and generate buttons
+            foreach (var id in thumb.id)
+            {
+              if (id != 0)
+              {
+                var thumbUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "small");
+                var largeUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "large");
+                thumbButtons.Add($"<a href='{largeUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{thumb.label} view'><img src='{thumbUrl}' width='36' height='36' /></a>");
+              }
+            }
+          }
+        }
+
+        if (thumbButtons.Count != 0)
         {
           html.AppendLine($"  <div class='thumb-buttons'>");
           html.AppendLine($"    {string.Join(" ", thumbButtons)}");
