@@ -300,17 +300,19 @@ public class ArtworkHTML
             {
               continue;
             }
+             
             int slashPos = fullPath.LastIndexOf('/');
-              string dir = slashPos > 0 ? fullPath[0..slashPos]:"";
-              string filename = fullPath[(slashPos + 1)..];
-              int dotLoc = filename.LastIndexOf('.');
-              string name = (dotLoc == -1) ? filename : filename[0..dotLoc];
-              string ext = (dotLoc == -1) ? "" : filename[(dotLoc + 1)..].ToLower();
+            string dir = slashPos > 0 ? fullPath[0..slashPos]:"";
+            string filename = fullPath[(slashPos + 1)..];
+            int dotLoc = filename.LastIndexOf('.');
+            string name = (dotLoc == -1) ? filename : filename[0..dotLoc];
+            string ext = (dotLoc == -1) ? "" : filename[(dotLoc + 1)..].ToLower();
+            DateTime? lastModified = obj.LastModified;
+
 
             if (slashPos == -1)
             {
-              // tif dir files are in the root of the bucket, so we want to skip those
-              artList.AddBucketFile(dir, name, ext);
+              artList.AddBucketFile(dir, name, ext, lastModified );
               JPGBucketFiles++;
 
               tifBucketFiles++;
@@ -333,7 +335,7 @@ public class ArtworkHTML
                   if (ext == "jpg")
                   {
                     // should really check if in correct (expected) location in bucket, but for now just set the state
-                    artList.AddBucketFile(dir, name, ext);
+                    artList.AddBucketFile(dir, name, ext, lastModified);
                     JPGBucketFiles++;
                   }
                   else
@@ -451,9 +453,9 @@ public class ArtworkHTML
         <p class='subtitle'><a href='index.html'>← Back to Home</a></p>");
 
     html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
-    foreach (var artlist in artList.artworks) // while (await reader.ReadAsync())
+    foreach (var artItem in artList.artworks) // while (await reader.ReadAsync())
     {
-      Artwork art = artlist.Value;
+      Artwork art = artItem.Value;
 /*
       if (art.states.HasFlag(StatesType.jpgFound))
       {

@@ -46,16 +46,16 @@ namespace ArtWorkHTML
       }
     }
 
-    public void AddBucketFile(string dir, string name, string ext)
+    public void AddBucketFile(string dir, string name, string ext, DateTime? lastModified)
     {
       var listElement = artworks.Where(x => x.Value.iFileName == name).FirstOrDefault();
-      var artwork = new Artwork(name);;
+      var artwork = new Artwork(name);
 
-      
       if (listElement.Key == null)
       {
         // file in bucket that doesn't match any of our artwork names create artwork for it.
         artwork.states |= StatesType.noDB; // Set noDB state
+        artwork.ctDate = lastModified ?? DateTime.Now;   // Set the ctDate to the last modified date of the file in the bucket
         artwork.iFileName = name;  // set the iFileName to the name of the file we found in the bucket so we can find it later if we need to
         artworks["unknow "+dupNumber.ToString()] = artwork;
         dupNumber++;
