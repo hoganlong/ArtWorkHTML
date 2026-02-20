@@ -46,10 +46,10 @@ namespace ArtWorkHTML
       }
     }
 
-    public void AddBucketFile(string dir, string name, string ext, DateTime? lastModified)
+    public void AddBucketFile(string dir, string name, string ext, DateTime? lastModified,bool removeServerError = false)
     {
       var listElement = artworks.Where(x => x.Value.iFileName == name).FirstOrDefault();
-      var artwork = new Artwork(name);
+      var artwork = new Artwork(dir,name,removeServerError);
 
       if (listElement.Key == null)
       {
@@ -168,9 +168,35 @@ namespace ArtWorkHTML
       this.states &= ~StatesType.NoImage;
       // the following is not "tested" in code and should 
       tifURL = baseURL + iFileName + ".tif";
-      jpgURL = baseURL + "jpg/" + iFileName + ".jpg";
+      jpgURL = baseURL + iFileName + ".jpg";
 
       this.errors.Add($"Was found on server and not DB");
+
+    }
+    
+    // This constructor is used when we only have the filename from the bucket and no other information about the artwork. It creates an artwork with default values for all other properties and sets the state to indicate that it was found in the bucket but not in the database.
+    public Artwork(string path, string filename,bool removeServerError = false)
+    {
+      this.id = "";
+      this.iFileName = filename;
+      this.title = "";
+      this.series = "";
+      this.ctDate = DateTime.Now;
+      this.medium = "";
+      this.dimensions =  "";
+      this.foldedDimensions = "";
+      this.location =  "";
+      this.notes =  "";
+      this.humanId =  "";
+      this.image_ids =  "";
+
+      this.states &= ~StatesType.NoImage;
+      // the following is not "tested" in code and should 
+      tifURL = baseURL + path + iFileName + ".tif";
+      jpgURL = baseURL + path + "jpg/" + iFileName + ".jpg";
+
+      if (!removeServerError)
+        this.errors.Add($"Was found on server and not DB");
 
     }
   } // Artwork

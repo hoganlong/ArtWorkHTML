@@ -34,7 +34,7 @@ public class ArtworkHTML
   {
     await GenerateIndexPage();
     await GenerateStatisticsPage();
-    await GenerateArtworkListPage();
+    await GenerateArtworkListPages();
     await GenerateSeriesPages();
     await GenerateLocationPages();
     await GenerateStylesheet();
@@ -59,9 +59,11 @@ public class ArtworkHTML
         </div>
 
         <div class='navigation'>
-            <h2>Browse the Archive</h2>
-            <a href='statistics.html' class='nav-button'>📊 Archive Statistics</a>
             <a href='artworksplus.html' class='nav-button'>🖼️ Browse All Artworks</a>
+            <a href='polaroids.html' class='nav-button'>🖼️ polaroids</a>
+            <a href='sketchbooks.html' class='nav-button'>🖼️ Sketchbooks</a>
+            <div class='break-point'></div>
+            <a href='statistics.html' class='nav-button'>📊 Archive Statistics</a>
             <a href='series.html' class='nav-button'>📚 View by Series</a>
             <a href='locations.html' class='nav-button'>📍 View by Location</a>
         </div>
@@ -148,13 +150,14 @@ public class ArtworkHTML
       return ("");
   }
 
-
-  private async Task GenerateArtworkListPage()
+  private async Task GenerateArtworkListPages()
   {
     // URL templates for S3 images
     const string S3_ARTWORK_IMAGE_URL = "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/atch/artwork_{0}_{1}.jpg";
 
     ArtList artList = new();
+    ArtList polaroidList = new();
+    ArtList sketchBookList = new();
 
     // Get all artworks from the database
     await using var connection = new NpgsqlConnection(_connectionString);
@@ -299,10 +302,49 @@ public class ArtworkHTML
           totalBucketFiles++;
           string fullPath = obj.Key;
 
+          int slashPos = fullPath.LastIndexOf('/');
+          string dir = slashPos > 0 ? fullPath[0..slashPos]:"";
+          string filename = fullPath[(slashPos + 1)..];
+          int dotLoc = filename.LastIndexOf('.');
+          string name = (dotLoc == -1) ? filename : filename[0..dotLoc];
+          string ext = (dotLoc == -1) ? "" : filename[(dotLoc + 1)..].ToLower();
+          DateTime? lastModified = obj.LastModified;
+
+
           if (fullPath.Length > 10 && fullPath[0..9] == "scans/jpg")
           {
             // not doing anything with scans right now, but want to keep track of how many there are in the bucket
             scanJPGBucketFiles++;
+            if (fullPath.EndsWith('/'))
+            {
+              continue;
+            }
+            if (ext == ".pdf")
+            {
+              // should have error msg for pdf files in scans/jpg dir since we aren't expecting them, but for now just skip them and keep track of how many there are 
+              skippedBucketFiles++;
+              continue;
+            }
+            if (dir == "scans/jpg" && filename.StartsWith("KLA")) // It's a sketchbook image so add it to the sketchbook list
+            {
+              //sketchBookList.AddBucketFile("scans/", fullPath[10..], "jpg", obj.LastModified);
+              sketchBookList.AddBucketFile("scans/", name, ext, lastModified,true);
+
+              continue;
+            }else  // It's a polaroid image so add it to the polaroid list
+            {
+            //  polaroidList.AddBucketFile("scans/", fullPath[10..], "jpg", obj.LastModified);
+              polaroidList.AddBucketFile("scans/", name, ext, lastModified,true);
+              continue;
+            }
+/*        else
+            {
+              // should have error msg for files in scans/jpg that don't start with that, but for now just skip them and keep track of how many there are 
+              Console.WriteLine($"Unexpected file in scans/jpg dir: {fullPath}");
+              skippedBucketFiles++;
+              continue;
+            }
+  */        
 
             /*      string filename = obj.Key.Substring(10);
                   string name = filename.Remove(filename.LastIndexOf('.'));
@@ -327,7 +369,7 @@ public class ArtworkHTML
             {
               continue;
             }
-             
+/*             
             int slashPos = fullPath.LastIndexOf('/');
             string dir = slashPos > 0 ? fullPath[0..slashPos]:"";
             string filename = fullPath[(slashPos + 1)..];
@@ -335,7 +377,7 @@ public class ArtworkHTML
             string name = (dotLoc == -1) ? filename : filename[0..dotLoc];
             string ext = (dotLoc == -1) ? "" : filename[(dotLoc + 1)..].ToLower();
             DateTime? lastModified = obj.LastModified;
-
+*/
 
             if (slashPos == -1)
             {
@@ -472,6 +514,7 @@ public class ArtworkHTML
 
     // Now generate the HTML page using the artList
     var html = new StringBuilder();
+    #region all artwork list page
     html.AppendLine(GetHtmlHeader("All Artworks - Keith Long Archive"));
 
     html.AppendLine(@"
@@ -564,8 +607,112 @@ public class ArtworkHTML
     html.AppendLine(GetHtmlFooter());
 
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "artworksplus.html"), html.ToString());
-  }
 
+    #endregion
+
+    #region polaroid list page
+    html.Clear();
+
+    // Now generate the HTML page for the polaroid list
+    html.AppendLine(GetHtmlHeader("{Polaroids - Keith Long Archive"));
+
+    html.AppendLine(@"
+    <div class='container'>
+        <h1>Polaroids</h1>
+        <p class='subtitle'><a href='index.html'>← Back to Home</a></p>");
+
+    html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
+    foreach (var artItem in polaroidList.artworks) // while (await reader.ReadAsync())
+    {
+      Artwork art = artItem.Value;
+
+      html.AppendLine($@"<div class='gallery-item'>");
+      html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)'/></a><br/>
+        <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
+
+      html.AppendLine($@"<div class='gallery-item'>");
+      html.AppendLine($"  <div class='desc'>");
+      html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.ctDate.ToShortDateString(), "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.humanId, "  ")}");
+      html.AppendLine($"  </div>");
+
+      html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>", art.errors)}</div>");
+
+      if (art.states.HasFlag(StatesType.noDB))
+        html.AppendLine($"<div class='desc'>Bucket name: {art.iFileName}<br/></div>");
+
+      if (art.states.HasFlag(StatesType.jpgFound))
+        html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
+      if (art.states.HasFlag(StatesType.tifFound))
+        html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
+
+      html.AppendLine($"</div></div>  <!-- gallery item -->");
+    }
+
+    html.AppendLine(@"</div>");
+    html.AppendLine(GetHtmlFooter());
+
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "polaroids.html"), html.ToString());
+    #endregion
+
+    #region sketchbook list page
+    html.Clear();
+    // Now generate the HTML page for the sketchbook list
+
+    // Now generate the HTML page for the polaroid list
+    html.AppendLine(GetHtmlHeader("Sketchbooks - Keith Long Archive"));
+
+    html.AppendLine(@"
+    <div class='container'>
+        <h1>Sketchbooks</h1>
+        <p class='subtitle'><a href='index.html'>← Back to Home</a></p>");
+
+    html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
+    foreach (var artItem in sketchBookList.artworks) // while (await reader.ReadAsync())
+    {
+      Artwork art = artItem.Value;
+
+      html.AppendLine($@"<div class='gallery-item'>");
+      html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)'/></a><br/>
+        <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
+
+      html.AppendLine($@"<div class='gallery-item'>");
+      html.AppendLine($"  <div class='desc'>");
+      html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.ctDate.ToShortDateString(), "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.humanId, "  ")}");
+      html.AppendLine($"  </div>");
+
+      html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>", art.errors)}</div>");
+
+      if (art.states.HasFlag(StatesType.noDB))
+        html.AppendLine($"<div class='desc'>Bucket name: {art.iFileName}<br/></div>");
+
+      if (art.states.HasFlag(StatesType.jpgFound))
+        html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
+      if (art.states.HasFlag(StatesType.tifFound))
+        html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
+
+      html.AppendLine($"</div></div>  <!-- gallery item -->");
+    }
+
+    html.AppendLine(@"</div>");
+    html.AppendLine(GetHtmlFooter());
+
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "sketchbooks.html"), html.ToString());
+    #endregion  
+
+
+  }
 
   private async Task GenerateArtworkListPageOld()
   {
@@ -887,6 +1034,11 @@ h1 {
     border-radius: 5px;
     font-weight: 500;
     transition: background 0.3s;
+}
+
+.break-point {
+  flex-basis: 100%; /* Forces the next element onto a new line */
+  height: 0; /* Keeps the break element from taking up vertical space */
 }
 
 .nav-button:hover {
