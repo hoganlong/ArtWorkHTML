@@ -11,6 +11,33 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace ArtWorkHTML;
 
+using System;
+using System.Collections.Generic;
+
+// Extension methods must be defined in a static class
+public static class DictionaryExtensions
+{
+    /// <summary>
+    /// Gets the value associated with the specified key, or creates and adds a new value if the key does not exist.
+    /// </summary>
+    /// <typeparam name="TKey">The type of the keys in the dictionary.</typeparam>
+    /// <typeparam name="TValue">The type of the values in the dictionary.</typeparam>
+    /// <param name="dictionary">The dictionary to extend.</param>
+    /// <param name="key">The key of the value to get or add.</param>
+    /// <returns>The value associated with the key.</returns>
+    public static TValue GetOrCreate<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key)
+        where TValue : new() // Constrains TValue to have a parameterless constructor
+    {
+        if (!dictionary.TryGetValue(key, out TValue? ret) || ret == null) // A safer way to access values than using the indexer directly
+        {
+            ret = new TValue();
+            dictionary[key] = ret;
+        }
+        return ret!;
+    }
+}
+
+
 public static class NullExtensions
 {
     public static IEnumerable<T> NotNull<T>(this IEnumerable<T?> enumerable) where T : class
@@ -61,7 +88,7 @@ public class ArtworkHTML
         <div class='navigation'>
             <a href='artworksplus.html' class='nav-button'>🖼️ Browse All Artworks</a>
             <a href='polaroids.html' class='nav-button'>🖼️ polaroids</a>
-            <a href='sketchbooks.html' class='nav-button'>🖼️ Sketchbooks</a>
+            <a href='sketchbook1.html' class='nav-button'>🖼️ Sketchbooks</a>
             <div class='break-point'></div>
             <a href='statistics.html' class='nav-button'>📊 Archive Statistics</a>
             <a href='series.html' class='nav-button'>📚 View by Series</a>
@@ -157,7 +184,7 @@ public class ArtworkHTML
 
     ArtList artList = new();
     ArtList polaroidList = new();
-    ArtList sketchBookList = new();
+    Dictionary<int, ArtList> sketchBookLists = [];
 
     // Get all artworks from the database
     await using var connection = new NpgsqlConnection(_connectionString);
@@ -185,8 +212,10 @@ public class ArtworkHTML
           ai_back.ids as back_id,
           ai_front.ids as front_id,
           ai_paper.ids as paper_id,
-          ai_polaroid.ids as polaroid_id
+          ai_polaroid.ids as polaroid_id,
+          t.code, t.description
         FROM artwork a
+        LEFT JOIN artwork_type t ON a.type_id ->> 0 = t.airtable_id
         LEFT JOIN imgGroup ai_back ON a.airtable_id = ai_back.artwork_id AND ai_back.lview    ='Back'
         LEFT JOIN imgGroup ai_front ON a.airtable_id = ai_front.artwork_id AND ai_front.lview ='Fron'
         LEFT JOIN imgGroup ai_paper ON a.airtable_id = ai_paper.artwork_id AND ai_paper.lview ='Pape'
@@ -213,6 +242,7 @@ public class ArtworkHTML
           reader.IsDBNull(6) ? "" : reader.GetString(6), reader.IsDBNull(7) ? "" : reader.GetString(7),
           reader.IsDBNull(8) ? "" : reader.GetString(8), reader.IsDBNull(9) ? "" : reader.GetString(9),
           reader.IsDBNull(10) ? "" : reader.GetString(10), reader.IsDBNull(11) ? "" : reader.GetString(11),
+          reader.IsDBNull(16) ? "" : reader.GetString(16),
           backId, frontId, paperId, polaroidId);
 
       artList.AddArtwork(artwork);
@@ -327,8 +357,15 @@ public class ArtworkHTML
             }
             if (dir == "scans/jpg" && filename.StartsWith("KLA")) // It's a sketchbook image so add it to the sketchbook list
             {
-              //sketchBookList.AddBucketFile("scans/", fullPath[10..], "jpg", obj.LastModified);
-              sketchBookList.AddBucketFile("scans/", name, ext, lastModified,true);
+              if (int.TryParse(filename.Split('_')[1], out int booknumber)) // get the book number from the filename which should be in the format KLA_XX_pagenumber.jpg where XX is the book number 
+              {
+                var sketchBookList = sketchBookLists.GetOrCreate(booknumber);  // get the sketchbook list for this book number, or create it if it doesn't exist
+                sketchBookList.AddBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
+              }
+              else
+              {
+                Console.WriteLine("Could not parse =>" + filename);
+              }
 
               continue;
             }else  // It's a polaroid image so add it to the polaroid list
@@ -381,10 +418,13 @@ public class ArtworkHTML
 
             if (slashPos == -1)
             {
-              artList.AddBucketFile(dir, name, ext, lastModified );
-              JPGBucketFiles++;
-
-              tifBucketFiles++;
+              if (ext == "tif")
+              {
+                // should check if in correct (expected) location in bucket, but for now just set the state
+                artList.AddBucketFile(dir, name, ext, lastModified);
+                JPGBucketFiles++;
+              }
+      //        JPGBucketFiles++;
               continue;
             }
             else
@@ -541,7 +581,7 @@ public class ArtworkHTML
                    <img src='{art.jpgURL}' title='(click for full size)'/>
                     </a><br/>
                     <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
-
+      }
         // Add thumbnail buttons for additional views
         var thumbnails = new List<(string label, int[]? id)>
         {
@@ -579,7 +619,7 @@ public class ArtworkHTML
           html.AppendLine($"    {string.Join(" ", thumbButtons)}");
           html.AppendLine($"  </div>");
         }
-      }
+     
       html.AppendLine($"  <div class='desc'>");
       html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.ctDate.ToShortDateString(), "  ")}");
@@ -660,17 +700,36 @@ public class ArtworkHTML
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "polaroids.html"), html.ToString());
     #endregion
 
-    #region sketchbook list page
-    html.Clear();
-    // Now generate the HTML page for the sketchbook list
+    #region sketchbook list pages
+     // Now generate the HTML page for each sketchbook list
+    foreach (KeyValuePair<int, ArtList> sketchBookEntry in sketchBookLists)
+    {
+      int bookNumber = sketchBookEntry.Key;
+      ArtList sketchBookList = sketchBookEntry.Value;
 
-    // Now generate the HTML page for the polaroid list
-    html.AppendLine(GetHtmlHeader("Sketchbooks - Keith Long Archive"));
+      html.Clear();
 
-    html.AppendLine(@"
-    <div class='container'>
-        <h1>Sketchbooks</h1>
-        <p class='subtitle'><a href='index.html'>← Back to Home</a></p>");
+      // Now generate the HTML page for the sketchbook list
+      html.AppendLine(GetHtmlHeader($"Sketchbook {bookNumber} - Keith Long Archive"));
+
+      html.AppendLine(@"
+        <div class='container'>
+          <h1>Sketchbooks</h1>
+          <p class='subtitle'><a href='index.html'>← Back to Home</a></p>");
+
+          // Add navigation for other sketchbooks if there are multiple
+          if (sketchBookLists.Count > 1)
+          {
+            html.AppendLine("<div class='sketchbook-nav'>");
+            foreach (var entry in sketchBookLists)
+            {
+              if (entry.Key == bookNumber)
+                html.AppendLine($"<span class='nav-button active'>Sketchbook {entry.Key}</span>");
+              else
+                html.AppendLine($"<a href='sketchbook{entry.Key}.html' class='nav-button'>Sketchbook {entry.Key}</a>");
+            }
+            html.AppendLine("</div>");
+          }  
 
     html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
     foreach (var artItem in sketchBookList.artworks) // while (await reader.ReadAsync())
@@ -708,9 +767,10 @@ public class ArtworkHTML
     html.AppendLine(@"</div>");
     html.AppendLine(GetHtmlFooter());
 
-    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "sketchbooks.html"), html.ToString());
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, $"sketchbook{bookNumber}.html"), html.ToString());
     #endregion  
-
+    
+    }
 
   }
 
