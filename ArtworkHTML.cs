@@ -606,7 +606,8 @@ public class ArtworkHTML
               {
                 var thumbUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "small");
                 var fullUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "full");
-                thumbButtons.Add($"<a href='{fullUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{thumb.label}{(hasMult?" "+curNum.ToString(): "")}'><img src='{thumbUrl}' width='36' height='36' /></a>");
+                var largeUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "large");
+                thumbButtons.Add($"<a href='{fullUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{thumb.label}{(hasMult?" "+curNum.ToString(): "")}'><img src='{thumbUrl}' width='36' height='36' /><img src='{largeUrl}' class='thumb-preview' /></a>");
               }
               curNum++;
             }
@@ -875,7 +876,7 @@ public class ArtworkHTML
           {
             var thumbUrl = string.Format(S3_ARTWORK_IMAGE_URL, t.id!.Value, "small");
             var largeUrl = string.Format(S3_ARTWORK_IMAGE_URL, t.id!.Value, "large");
-            return $"<a href='{largeUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{t.label} view'><img src='{thumbUrl}' width='36' height='36' /></a>";
+            return $"<a href='{largeUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{t.label} view'><img src='{thumbUrl}' width='36' height='36' /><img src='{largeUrl}' class='thumb-preview' /></a>";
           })
           .ToList();
 
@@ -1209,15 +1210,27 @@ footer {
     margin: 5px;
     border: 1px solid #ccc;
     width: 250px;
+    position: relative;
   }
   div.gallery-item:hover
   {
     border: 1px solid #777;
+    z-index: 50;
   }
   div.gallery-item img
   {
     width: 100%;
     height: auto;
+  }
+  div.gallery-item > a > img
+  {
+    display: block;
+    transition: transform 0.2s ease;
+  }
+  div.gallery-item > a > img:hover
+  {
+    transform: scale(2);
+    transform-origin: bottom center;
   }
   div.gallery-item div.desc
   {
@@ -1235,6 +1248,7 @@ footer {
 
   .thumb-button {
     display: inline-block;
+    position: relative;
     border: 2px solid #ccc;
     border-radius: 4px;
     transition: border-color 0.2s;
@@ -1244,10 +1258,32 @@ footer {
     border-color: #3498db;
   }
 
-  .thumb-button img {
+  .thumb-button img:not(.thumb-preview) {
     display: block;
     width: 36px;
     height: 36px;
+  }
+
+  .thumb-button img.thumb-preview {
+    display: none;
+    position: absolute;
+    bottom: 44px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 280px;
+    max-height: 280px;
+    width: auto;
+    height: auto;
+    border: 2px solid #3498db;
+    border-radius: 4px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+    background: white;
+    z-index: 200;
+    pointer-events: none;
+  }
+
+  .thumb-button:hover img.thumb-preview {
+    display: block;
   }
 
 @media (max-width: 768px) {
