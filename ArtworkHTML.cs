@@ -560,7 +560,14 @@ public class ArtworkHTML
     html.AppendLine(@"
     <div class='container'>
         <h1>All Artworks</h1>
-        <p class='subtitle'><a href='index.html'>← Back to Home</a></p>");
+        <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
+    </div>
+    <div class='page-controls'>
+        <span class='page-controls-label'>Hover effects:</span>
+        <label><input type='checkbox' id='chk-thumb-hover' checked onchange='document.body.classList.toggle(""no-thumb-hover"", !this.checked)'> Thumbnail preview</label>
+        <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom</label>
+    </div>
+    <div class='container'>");
 
     html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
     foreach (var artItem in artList.artworks) // while (await reader.ReadAsync())
@@ -660,7 +667,13 @@ public class ArtworkHTML
     html.AppendLine(@"
     <div class='container'>
         <h1>Polaroids</h1>
-        <p class='subtitle'><a href='index.html'>← Back to Home</a></p>");
+        <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
+    </div>
+    <div class='page-controls'>
+        <span class='page-controls-label'>Hover effects:</span>
+        <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom</label>
+    </div>
+    <div class='container'>");
 
     html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
     foreach (var artItem in polaroidList.artworks) // while (await reader.ReadAsync())
@@ -721,16 +734,24 @@ public class ArtworkHTML
           // Add navigation for other sketchbooks if there are multiple
           if (sketchBookLists.Count > 1)
           {
-            html.AppendLine("<div class='sketchbook-nav'>");
+            html.AppendLine("<div class='sketchbook-nav'><span class='sketchbook-nav-label'>Sketchbook:</span>");
             foreach (var entry in sketchBookLists)
             {
               if (entry.Key == bookNumber)
-                html.AppendLine($"<span class='nav-button active'>Sketchbook {entry.Key}</span>");
+                html.AppendLine($"<span class='nav-button sketchbook-nav-button active'>{entry.Key}</span>");
               else
-                html.AppendLine($"<a href='sketchbook{entry.Key}.html' class='nav-button'>Sketchbook {entry.Key}</a>");
+                html.AppendLine($"<a href='sketchbook{entry.Key}.html' class='nav-button sketchbook-nav-button'>{entry.Key}</a>");
             }
             html.AppendLine("</div>");
-          }  
+          }
+
+      html.AppendLine(@"
+        </div>
+        <div class='page-controls'>
+            <span class='page-controls-label'>Hover effects:</span>
+            <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom</label>
+        </div>
+        <div class='container'>");
 
     html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
     foreach (var artItem in sketchBookList.artworks) // while (await reader.ReadAsync())
@@ -1106,6 +1127,31 @@ h1 {
     background: #2980b9;
 }
 
+.nav-button.active {
+    background: #2c3e50;
+    cursor: default;
+}
+
+.sketchbook-nav {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 8px 0;
+}
+
+.sketchbook-nav-label {
+    font-weight: bold;
+    font-size: 0.85em;
+    color: #555;
+    margin-right: 4px;
+}
+
+.sketchbook-nav-button {
+    padding: 4px 10px;
+    font-size: 0.8em;
+}
+
 .artwork-table {
     width: 100%;
     background: white;
@@ -1286,6 +1332,48 @@ footer {
     display: block;
   }
 
+  body.no-thumb-hover .thumb-button:hover img.thumb-preview {
+    display: none;
+  }
+
+  body.no-image-hover div.gallery-item > a > img:hover {
+    transform: none;
+  }
+
+  .site-notice {
+    text-align: center;
+    background: #f5f0e8;
+    color: #666;
+    padding: 10px 20px;
+    font-size: 0.85em;
+    border-bottom: 1px solid #d0c8b8;
+    letter-spacing: 0.02em;
+  }
+
+  .page-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 8px 16px;
+    background: #f0f4f8;
+    border-bottom: 1px solid #d0d8e0;
+    font-size: 0.875em;
+    color: #444;
+  }
+
+  .page-controls-label {
+    font-weight: bold;
+    color: #555;
+  }
+
+  .page-controls label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
 @media (max-width: 768px) {
     .artwork-table {
         font-size: 0.9em;
@@ -1315,9 +1403,10 @@ footer {
     <link rel='stylesheet' href='style.css'>
 </head>
 <body>
-<p>
-    This website is NOT open to the public.   It is in development.  All images and content are (c) Estate of Keith Long.
-</p>
+<div class='site-notice'>
+    &#128274; This website is <strong>not open to the public</strong> &mdash; it is in development.
+    All images and content are &copy; Estate of Keith Long.
+</div>
   ";
   }
 
