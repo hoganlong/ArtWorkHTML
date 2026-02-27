@@ -51,6 +51,29 @@ public class ArtworkHTML
   private readonly string _connectionString;
   private readonly string _outputDirectory;
 
+  // -----------------------------------------------------------------------
+  // Type code descriptions — update the values here to replace placeholders
+  // -----------------------------------------------------------------------
+  private static readonly Dictionary<string, string> TypeDescriptions = new(StringComparer.OrdinalIgnoreCase)
+  {
+    {"W",	"Wall hanging sculpture"},
+    {"D",	"Drawing"},
+    {"S",	"Sculpture (non-wall)"},
+    {"C",	"Canvas"},
+    {"J",	"Jewelry"},
+    {"P",	"Painting (non-canvas)"},
+    {"B",	"Broach"},
+    {"N",	"Necklace"}
+    // Add entries as needed; any code not listed falls back to "Description {code}"
+  };
+
+  private string GetTypeDescription(string? typeCode)
+  {
+    if (string.IsNullOrEmpty(typeCode)) return "";
+    return TypeDescriptions.TryGetValue(typeCode, out var desc) ? desc : $"Description {typeCode}";
+  }
+  // -----------------------------------------------------------------------
+
   public ArtworkHTML(string connectionString, string outputDirectory)
   {
     _connectionString = connectionString;
@@ -563,10 +586,66 @@ public class ArtworkHTML
         <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
     </div>
     <div class='page-controls'>
-        <span class='page-controls-label'>Hover effects:</span>
-        <label><input type='checkbox' id='chk-thumb-hover' checked onchange='document.body.classList.toggle(""no-thumb-hover"", !this.checked)'> Thumbnail preview</label>
-        <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom</label>
+        <div class='page-controls-row'>
+            <span class='page-controls-label'>Hover effects:</span>
+            <label><input type='checkbox' id='chk-thumb-hover' checked onchange='document.body.classList.toggle(""no-thumb-hover"", !this.checked)'> Thumbnail preview</label>
+            <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom</label>
+        </div>
+        <div class='page-controls-row'>
+            <span class='page-controls-label'>Show types:</span>
+            <span id='type-filter-checkboxes'></span>
+        </div>
     </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var items = document.querySelectorAll('.gallery-item');
+        var types = {};
+        items.forEach(function(el) {
+            var code = el.getAttribute('data-typecode') || '(none)';
+            var desc = el.getAttribute('data-typedesc') || code;
+            if (!types[code]) types[code] = desc;
+        });
+        var container = document.getElementById('type-filter-checkboxes');
+        if (!container) return;
+
+        // All master checkbox — controls all type boxes but is not affected by them
+        var allLabel = document.createElement('label');
+        var allCb = document.createElement('input');
+        allCb.type = 'checkbox';
+        allCb.checked = true;
+        allCb.addEventListener('change', function() {
+            container.querySelectorAll('input[data-filter-type]').forEach(function(cb) {
+                cb.checked = allCb.checked;
+            });
+            filterGallery();
+        });
+        allLabel.appendChild(allCb);
+        allLabel.appendChild(document.createTextNode(' All'));
+        container.appendChild(allLabel);
+
+        Object.keys(types).sort().forEach(function(code) {
+            var label = document.createElement('label');
+            var cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = true;
+            cb.dataset.filterType = code;
+            cb.addEventListener('change', filterGallery);
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(' ' + types[code]));
+            container.appendChild(label);
+        });
+        function filterGallery() {
+            var hidden = new Set();
+            container.querySelectorAll('input[data-filter-type]').forEach(function(cb) {
+                if (!cb.checked) hidden.add(cb.dataset.filterType);
+            });
+            items.forEach(function(el) {
+                var t = el.getAttribute('data-typecode') || '(none)';
+                el.style.display = hidden.has(t) ? 'none' : '';
+            });
+        }
+    });
+    </script>
     <div class='container'>");
 
     html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
@@ -581,7 +660,7 @@ public class ArtworkHTML
 
 
 */
-      html.AppendLine($@"<div class='gallery-item'>");
+      html.AppendLine($@"<div class='gallery-item' data-typecode='{EscapeHtml(art.typeCode)}' data-typedesc='{EscapeHtml(GetTypeDescription(art.typeCode))}'>");
       if ((art.states & StatesType.NoImage) == 0) // if we have an image
       {
         html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'>
@@ -636,6 +715,7 @@ public class ArtworkHTML
       html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: ")}");
       html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
       html.AppendLine($"    {BlankOrWithBR(art.humanId, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(GetTypeDescription(art.typeCode), "  Type: ")}");
       html.AppendLine($"  </div>");
 
       html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>", art.errors)}</div>");
@@ -1342,8 +1422,8 @@ footer {
 
   .site-notice {
     text-align: center;
-    background: #f5f0e8;
-    color: #666;
+    background: #0000CC;
+    color: #ffffff;
     padding: 10px 20px;
     font-size: 0.85em;
     border-bottom: 1px solid #d0c8b8;
@@ -1352,14 +1432,22 @@ footer {
 
   .page-controls {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 20px;
-    padding: 8px 16px;
+    gap: 4px;
+    padding: 6px 16px;
     background: #f0f4f8;
     border-bottom: 1px solid #d0d8e0;
     font-size: 0.875em;
     color: #444;
+  }
+
+  .page-controls-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px 14px;
   }
 
   .page-controls-label {
@@ -1371,7 +1459,15 @@ footer {
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  #type-filter-checkboxes {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px 10px;
+    align-items: center;
   }
 
 @media (max-width: 768px) {
