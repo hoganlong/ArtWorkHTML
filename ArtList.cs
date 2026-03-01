@@ -1,6 +1,8 @@
 
+using System.ComponentModel;
 using System.Diagnostics.Tracing;
 using System.Net.Http.Headers;
+using Amazon.Util.Internal;
 
 namespace ArtWorkHTML
 {
@@ -105,14 +107,23 @@ namespace ArtWorkHTML
     public int[]? paperId = null;
     public int[]? polaroidId = null;
 
+    // Artwork filenames for different views
+    public string[]? backFileName = null;
+    public string[]? frontFileName = null;
+
     public StatesType states=StatesType.NoImage; 
 
     // Direved utility elements
     public string tifURL = new("");
     public string jpgURL = new("");
 
-    public Artwork(string id, string iFileName, string title, string series, DateTime ctDate, string medium,string dimensions, string foldedDimensions,
-       string location, string notes, string humanId, string image_ids,string typeCode, int[]? backId = null, int[]? frontId = null, int[]? paperId = null, int[]? polaroidId = null)
+    public string MakeJPGURL(string filename)
+    {
+      return $"{baseURL}jpg/{filename}.jpg";
+    }
+
+    public Artwork(string id, string iFileName, string title, string series, DateTime ctDate, string medium,string dimensions, string foldedDimensions, string location, string notes, string humanId, 
+       string image_ids,string typeCode, int[]? backId = null, int[]? frontId = null, int[]? paperId = null, int[]? polaroidId = null, string[]? backFileName = null, string[]? frontFileName = null )
     {
       this.id = id ?? "";
       this.iFileName = iFileName ?? "";
@@ -131,6 +142,8 @@ namespace ArtWorkHTML
       this.frontId = frontId;
       this.paperId = paperId;
       this.polaroidId = polaroidId;
+      this.backFileName = backFileName;
+      this.frontFileName = frontFileName; 
 
       if (string.IsNullOrEmpty(iFileName))
       { // set no image state if we don't have an image file name
@@ -147,9 +160,8 @@ namespace ArtWorkHTML
       { // Remove no image state if we have an image file name
         this.states &= ~StatesType.NoImage;
         tifURL = baseURL + iFileName + ".tif";
-        jpgURL = baseURL + "jpg/" + iFileName + ".jpg";
+        jpgURL = MakeJPGURL(iFileName);
       }
-
     }
 
     public Artwork(string filename)
