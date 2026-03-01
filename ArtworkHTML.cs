@@ -214,36 +214,55 @@ public class ArtworkHTML
     await connection.OpenAsync();
 
     var sql = @"
+
+        -- we should add a check there are no direct images that are not front and back view
+        -- and there are no attachments that are not front, back, paper or palaroid 
         with img as 
         (
           select ai.id_field, ai.artwork_id, LEFT(ai.view , 4) as lview 
-          from artwork_image ai 
+          from artwork_image ai
           where 
-            ai.view LIKE 'Back%' OR
-            ai.view LIKE 'Front%' OR
-            ai.view LIKE 'Paper%' OR
-            ai.view LIKE 'Polaroid%'
+            (ai.view LIKE 'Back%' OR
+             ai.view LIKE 'Front%' OR
+             ai.view LIKE 'Paper%' OR
+             ai.view LIKE 'Polaroid%')
+            and URL is null 
         ), imgGroup as 
         (
           select array_to_string(array_agg(id_field), ', ') as ids, artwork_id, lview
           from img 
           group by artwork_id, img.lview 
+        ), dirimg as 
+        (
+          select ai.url, ai.artwork_id, LEFT(ai.view , 4) as lview 
+          from artwork_image ai
+          where ai.URL is not null 
+        ), dirimgGroup as 
+        (
+          select array_to_string(array_agg(url), ', ') as dirimgs, artwork_id, lview
+          from dirimg 
+          group by artwork_id, dirimg.lview 
         )
         SELECT
           a.id_field, a.iFileName, a.title, a.series, a.create_dt, a.medium, a.dimensions, a.FOLDED_DIMENSIONS,
           a.location, a.notes, a.human_readable_id, a.artwork_image_id,
-          ai_back.ids as back_id,
-          ai_front.ids as front_id,
-          ai_paper.ids as paper_id,
-          ai_polaroid.ids as polaroid_id,
-          t.code, t.description
+          ai_back.ids as back_id,   -- 12
+          ai_front.ids as front_id, -- 13
+          ai_paper.ids as paper_id, -- 14
+          ai_polaroid.ids as polaroid_id, -- 15
+          diri_back.dirimgs as back_imgs, -- 16  
+          diri_front.dirimgs as front_imgs, -- 17
+          t.code, t.description as type_desc -- 18, 19
         FROM artwork a
         LEFT JOIN artwork_type t ON a.type_id ->> 0 = t.airtable_id
         LEFT JOIN imgGroup ai_back ON a.airtable_id = ai_back.artwork_id AND ai_back.lview    ='Back'
         LEFT JOIN imgGroup ai_front ON a.airtable_id = ai_front.artwork_id AND ai_front.lview ='Fron'
         LEFT JOIN imgGroup ai_paper ON a.airtable_id = ai_paper.artwork_id AND ai_paper.lview ='Pape'
         LEFT JOIN imgGroup ai_polaroid ON a.airtable_id = ai_polaroid.artwork_id AND ai_polaroid.lview ='Pola'
-        ORDER BY a.human_readable_id, a.create_dt ASC NULLS LAST";
+        LEFT JOIN dirimgGroup diri_back ON a.airtable_id = diri_back.artwork_id AND diri_back.lview    ='Back'
+        LEFT JOIN dirimgGroup diri_front ON a.airtable_id = diri_front.artwork_id AND diri_front.lview ='Fron'
+        where ai_back.ids is not null or ai_front.ids is not null or ai_paper.ids is not null or ai_polaroid.ids is not null or diri_back.dirimgs is not null or diri_front.dirimgs is not null
+        ORDER BY a.human_readable_id, a.create_dt ASC NULLS last";
 
     await using var cmd = new NpgsqlCommand(sql, connection);
     await using var reader = await cmd.ExecuteReaderAsync();
@@ -259,14 +278,18 @@ public class ArtworkHTML
       var polaroidId = reader.IsDBNull(15) ? null : reader.GetString(15).Split(',').
               Select(s => int.TryParse(s.Trim(), out int id) ? (int?)id : null).Where(id => id.HasValue).Select(id => id!.Value).ToArray();
 
+      var backFileName = reader.IsDBNull(16) ? null : reader.GetString(16).Split(',').Select(s => s.Trim()).ToArray();
+      var frontFileName = reader.IsDBNull(17) ? null : reader.GetString(17).Split(',').Select(s => s.Trim()).ToArray();
+
+
       Artwork artwork = new(reader.GetInt32(0).ToString(), reader.IsDBNull(1) ? "" : reader.GetString(1),
          reader.IsDBNull(2) ? "" : reader.GetString(2), reader.IsDBNull(3) ? "" : reader.GetString(3),
           reader.IsDBNull(4) ? DateTime.MinValue : reader.GetDateTime(4), reader.IsDBNull(5) ? "" : reader.GetString(5),
           reader.IsDBNull(6) ? "" : reader.GetString(6), reader.IsDBNull(7) ? "" : reader.GetString(7),
           reader.IsDBNull(8) ? "" : reader.GetString(8), reader.IsDBNull(9) ? "" : reader.GetString(9),
           reader.IsDBNull(10) ? "" : reader.GetString(10), reader.IsDBNull(11) ? "" : reader.GetString(11),
-          reader.IsDBNull(16) ? "" : reader.GetString(16),
-          backId, frontId, paperId, polaroidId);
+          reader.IsDBNull(18) ? "" : reader.GetString(18),
+          backId, frontId, paperId, polaroidId,backFileName, frontFileName);  
 
       artList.AddArtwork(artwork);
     } // while reader.ReadAsync()
@@ -492,14 +515,8 @@ public class ArtworkHTML
                   break;
               }
             }
-
-
-            //            Console.WriteLine(obj.Key);
-            // skippedBucketFiles++;
           }
-
         }
-
         request.ContinuationToken = response.NextContinuationToken;
       } while (response.IsTruncated == true);
 
@@ -677,13 +694,21 @@ public class ArtworkHTML
           ("Polaroid", art.polaroidId)
         };
 
+        var filethumbnails = new List<(string label, string[]? names)>
+        {
+          ("Front", art.frontFileName),
+          ("Back", art.backFileName)
+        };
+
         List<string> thumbButtons = [];
+
+        bool hasMult = false;
 
         foreach (var thumb in thumbnails)
         {
           if (thumb.id is not null && thumb.id.Length > 0)
           {
-            bool hasMult = thumb.id.Length > 1;
+            hasMult = thumb.id.Length > 1;
             int curNum = 1;
             // We have at least one thumbnail for this view, so we can break out of the loop and generate buttons
             foreach (var id in thumb.id)
@@ -699,6 +724,28 @@ public class ArtworkHTML
             }
           }
         }
+
+        foreach (var filethumb in filethumbnails)
+        {
+          if (filethumb.names is not null && filethumb.names.Length > 0)
+          {
+            hasMult = hasMult || filethumb.names.Length > 1;
+
+            int curNum = 1;
+            // We have at least one thumbnail for this view, so we can break out of the loop and generate buttons
+            foreach (var name in filethumb.names)
+            {
+              if (!string.IsNullOrEmpty(name))
+              {
+                var url = art.MakeJPGURL(name);
+                
+                thumbButtons.Add($"<a href='{url}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{filethumb.label}(L){(hasMult?" "+curNum.ToString(): "")}'><img src='{url}' width='36' height='36' /><img src='{url}' width='100' height='100' class='thumb-preview' /></a>");
+              }
+              curNum++;
+            }
+          }
+        }
+
 
         if (thumbButtons.Count != 0)
         {
