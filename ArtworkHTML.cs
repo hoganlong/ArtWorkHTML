@@ -190,6 +190,16 @@ public class ArtworkHTML
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "statistics.html"), html.ToString());
   }
 
+  private static string BlankOrComment(string inS, string prepend = "")
+  {
+    if (!string.IsNullOrEmpty(inS))
+    {
+      return ("<!--" + prepend + inS + "-->");
+    }
+    else
+      return ("");
+  }
+
   private static string BlankOrWithBR(string inS, string prepend = "")
   {
     if (!string.IsNullOrEmpty(inS))
@@ -207,12 +217,14 @@ public class ArtworkHTML
 
     ArtList artList = new();
     ArtList polaroidList = new();
-    Dictionary<int, ArtList> sketchBookLists = [];
+    ArtList sketchBookList = new();
+ //   Dictionary<int, ArtList> sketchBookLists = [];
 
     // Get all artworks from the database
     await using var connection = new NpgsqlConnection(_connectionString);
     await connection.OpenAsync();
 
+    // Do the Artwork SQL
     var sql = @"
 
         -- we should add a check there are no direct images that are not front and back view
@@ -244,7 +256,7 @@ public class ArtworkHTML
           group by artwork_id, dirimg.lview 
         )
         SELECT
-          a.id_field, a.iFileName, a.title, a.series, a.create_dt, a.medium, a.dimensions, a.FOLDED_DIMENSIONS,
+          a.id_field, a.FileName, a.title, a.series, a.create_dt, a.medium, a.dimensions, a.FOLDED_DIMENSIONS,
           a.location, a.notes, a.human_readable_id, a.artwork_image_id,
           ai_back.ids as back_id,   -- 12
           ai_front.ids as front_id, -- 13
@@ -293,11 +305,42 @@ public class ArtworkHTML
 
       artList.AddArtwork(artwork);
     } // while reader.ReadAsync()
+    reader.Close();
+    cmd.Dispose();
 
+    // Do the Sketchbook SQL
+    sql = @"
+       select s.airtable_id, s.sketch_dt, s.description, s.sketch_loc, s.sketch_people,
+              s.sketch_medium, s.sketchbook_number, s.page_number, s.artwork_id, s.filename, s.pub_notes
+       from sketch s 
+       order by s.sketchbook_number asc, s.page_number asc";
 
+    await using var sketchcmd = new NpgsqlCommand(sql, connection);
+    await using var sketchreader = await sketchcmd.ExecuteReaderAsync();
+
+    while (await sketchreader.ReadAsync())
+    {
+      string airtable_id= reader.IsDBNull(0) ? "" : reader.GetString(0);
+      DateTime ctDate = reader.IsDBNull(1) ? DateTime.MinValue : reader.GetDateTime(1);
+      string description = reader.IsDBNull(2) ? "" : reader.GetString(2);
+      string location = reader.IsDBNull(3) ? "" : reader.GetString(3);
+      string people = reader.IsDBNull(4) ? "" : reader.GetString(4);
+      string medium = reader.IsDBNull(5) ? "" : reader.GetString(5);
+      int sketchbookNumber = reader.IsDBNull(6) ? 0 : reader.GetInt32(6);
+      int pageNumber = reader.IsDBNull(7) ? 0 : reader.GetInt32(7);
+      string? artworkID = reader.IsDBNull(8) ? null : reader.GetString(8);
+      string filename = reader.IsDBNull(9) ? "" : reader.GetString(9);
+      string pubNotes = reader.IsDBNull(10) ? "" : reader.GetString(10);
+
+      Artwork sketch = new(airtable_id, ctDate, location, people, medium, sketchbookNumber, pageNumber, artworkID, pubNotes, filename);
+      sketchBookList.AddArtwork(sketch);  
+    } // while reader.ReadAsync()
+    sketchreader.Close();
+    sketchcmd.Dispose();  
+
+    // Now get the bucket data
     string bucketName = "keithlong-art-photos";
     string region = "us-east-1";
-    //    Dictionary<string, int> updates = new();
 
     try
     {
@@ -386,6 +429,11 @@ public class ArtworkHTML
           string ext = (dotLoc == -1) ? "" : filename[(dotLoc + 1)..].ToLower();
           DateTime? lastModified = obj.LastModified;
 
+          if (dir == "scans" && ext == "tif" && filename.StartsWith("KLA")) // It's a sketchbook TIF so add it to the sketchbook list
+          {
+            sketchBookList.AddBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
+            continue;
+          }
 
           if (fullPath.Length > 10 && fullPath[0..9] == "scans/jpg")
           {
@@ -403,47 +451,15 @@ public class ArtworkHTML
             }
             if (dir == "scans/jpg" && filename.StartsWith("KLA")) // It's a sketchbook image so add it to the sketchbook list
             {
-              if (int.TryParse(filename.Split('_')[1], out int booknumber)) // get the book number from the filename which should be in the format KLA_XX_pagenumber.jpg where XX is the book number 
-              {
-                var sketchBookList = sketchBookLists.GetOrCreate(booknumber);  // get the sketchbook list for this book number, or create it if it doesn't exist
-                sketchBookList.AddBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
-              }
-              else
-              {
-                Console.WriteLine("Could not parse =>" + filename);
-              }
-
+              sketchBookList.AddBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
               continue;
-            }else  // It's a polaroid image so add it to the polaroid list
+            }
+            else  // It's a polaroid image so add it to the polaroid list
             {
             //  polaroidList.AddBucketFile("scans/", fullPath[10..], "jpg", obj.LastModified);
               polaroidList.AddBucketFile("scans/", name, ext, lastModified,true);
               continue;
             }
-/*        else
-            {
-              // should have error msg for files in scans/jpg that don't start with that, but for now just skip them and keep track of how many there are 
-              Console.WriteLine($"Unexpected file in scans/jpg dir: {fullPath}");
-              skippedBucketFiles++;
-              continue;
-            }
-  */        
-
-            /*      string filename = obj.Key.Substring(10);
-                  string name = filename.Remove(filename.LastIndexOf('.'));
-                  string url = $"https://keithlong-art-photos.s3.us-east-1.amazonaws.com/scans/jpg/{filename}";
-
-                  htmlContent.Append("  <div class= \"gallery-item\" >\n");
-                  htmlContent.Append($"    <a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\"><img src=\"{url}\" title=\"(click for full size)\"  /></a>\n");
-                  htmlContent.Append($"    <div class=\"desc\">{name}<br/><div style=\"font-size:x-small\">{obj.LastModified}</div></div>\n");
-                  htmlContent.Append("  </div>\n");
-
-                  string lastModDate = obj.LastModified.Value.ToShortDateString();
-                  if (updates.ContainsKey(lastModDate))
-                    updates[lastModDate]++;
-                  else
-                    updates[lastModDate] = 1;
-            */
           }
           else
           {
@@ -452,16 +468,6 @@ public class ArtworkHTML
             {
               continue;
             }
-/*             
-            int slashPos = fullPath.LastIndexOf('/');
-            string dir = slashPos > 0 ? fullPath[0..slashPos]:"";
-            string filename = fullPath[(slashPos + 1)..];
-            int dotLoc = filename.LastIndexOf('.');
-            string name = (dotLoc == -1) ? filename : filename[0..dotLoc];
-            string ext = (dotLoc == -1) ? "" : filename[(dotLoc + 1)..].ToLower();
-            DateTime? lastModified = obj.LastModified;
-*/
-
             if (slashPos == -1)
             {
               if (ext == "tif")
@@ -538,60 +544,6 @@ public class ArtworkHTML
       Console.WriteLine($"Error: {ex.Message}");
     }
 
-    /*
-    foreach (Amazon.S3.Model.S3Object obj in response.S3Objects)
-    {
-      totalFiles++;
-
-      Console.WriteLine($"Key: {obj.Key}");
-      Console.WriteLine($"  Size: {FormatBytes(obj.Size ?? 0)}");
-      Console.WriteLine($"  Last Modified: {obj.LastModified}");
-      Console.WriteLine($"  Storage Class: {obj.StorageClass}");
-      Console.WriteLine();
-    }
-
-    request.ContinuationToken = response.NextContinuationToken;
-*/
-    /*    
-      } while (response.IsTruncated == true);
-
-      htmlContent.Append("  </div>\n");
-
-      htmlContent.AppendLine("<div style=\"width:100%; text-align: center\">");
-      htmlContent.AppendLine($"Total files: {totalFiles}<BR/>");
-      htmlContent.AppendLine($"Total skipped: {skippedFiles}<BR/>");
-      htmlContent.AppendLine($"Total scans: {scanfiles}<BR/>");
-      foreach (var dCount in updates)
-        htmlContent.AppendLine($"{dCount.Key} has {dCount.Value} updates<BR/>");
-      htmlContent.AppendLine("</div>");
-
-      htmlContent.Append("</body>\n");
-
-      Directory.SetCurrentDirectory(Path.GetDirectoryName(Util.CurrentQueryPath));
-      // Write the content to a file
-      File.WriteAllText(@".\scannedImages.html", htmlContent.ToString(), Encoding.UTF8);
-
-      //update end
-
-      Console.WriteLine($"Total files: {totalFiles}");
-      Console.WriteLine($"Total skipped: {skippedFiles}");
-      Console.WriteLine($"Total scans: {scanfiles}");
-      updates.Dump();
-    }
-
-    catch (AmazonS3Exception ex)
-    {
-      Console.WriteLine($"AWS S3 Error: {ex.Message}");
-      Console.WriteLine($"Error Code: {ex.ErrorCode}");
-    }
-    catch (Exception ex)
-    {
-      Console.WriteLine($"Error: {ex.Message}");
-    }
-  }
-
-  */
-
     // Now generate the HTML page using the artList
     var html = new StringBuilder();
     #region all artwork list page
@@ -605,8 +557,8 @@ public class ArtworkHTML
     <div class='page-controls'>
         <div class='page-controls-row'>
             <span class='page-controls-label'>Hover effects:</span>
-            <label><input type='checkbox' id='chk-thumb-hover' checked onchange='document.body.classList.toggle(""no-thumb-hover"", !this.checked)'> Thumbnail preview</label>
-            <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom</label>
+            <label><input type='checkbox' id='chk-thumb-hover' checked onchange='document.body.classList.toggle(""no-thumb-hover"", !this.checked)'> Thumbnail preview (p)</label>
+            <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom (z)</label>
         </div>
         <div class='page-controls-row'>
             <span class='page-controls-label'>Show types:</span>
@@ -661,6 +613,14 @@ public class ArtworkHTML
                 el.style.display = hidden.has(t) ? 'none' : '';
             });
         }
+    });
+    </script>
+    <script>
+    document.addEventListener('keydown', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
+        if (e.key === 'p' || e.key === 'P') document.getElementById('chk-thumb-hover')?.click();
+        if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
     });
     </script>
     <div class='container'>");
@@ -768,7 +728,7 @@ public class ArtworkHTML
       html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>", art.errors)}</div>");
 
       if (art.states.HasFlag(StatesType.noDB))
-        html.AppendLine($"<div class='desc'>Bucket name: {art.iFileName}<br/></div>");
+        html.AppendLine($"<div class='desc'>Bucket name: {art.fileName}<br/></div>");
 
       if (art.states.HasFlag(StatesType.jpgFound))
         html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
@@ -798,8 +758,16 @@ public class ArtworkHTML
     </div>
     <div class='page-controls'>
         <span class='page-controls-label'>Hover effects:</span>
-        <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom</label>
+        <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom (z)</label>
     </div>
+    <script>
+    document.addEventListener('keydown', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
+        if (e.key === 'p' || e.key === 'P') document.getElementById('chk-thumb-hover')?.click();
+        if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    </script>
     <div class='container'>");
 
     html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
@@ -825,7 +793,7 @@ public class ArtworkHTML
       html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>", art.errors)}</div>");
 
       if (art.states.HasFlag(StatesType.noDB))
-        html.AppendLine($"<div class='desc'>Bucket name: {art.iFileName}<br/></div>");
+        html.AppendLine($"<div class='desc'>Bucket name: {art.fileName}<br/></div>");
 
       if (art.states.HasFlag(StatesType.jpgFound))
         html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
@@ -842,86 +810,109 @@ public class ArtworkHTML
     #endregion
 
     #region sketchbook list pages
+    var lastSketchbookNumber = -1; 
+    List<int> sketchbookNumbers = sketchBookList.artworks.Values.Where(e => e.myType.HasFlag(ArtType.Sketch)).Select(a => a.sketchbookNumber).Distinct().OrderBy(n => n).ToList();
+
      // Now generate the HTML page for each sketchbook list
-    foreach (KeyValuePair<int, ArtList> sketchBookEntry in sketchBookLists)
+    foreach (var sketchBookEntry in sketchBookList.artworks.Where(e => e.Value.myType.HasFlag(ArtType.Sketch)).OrderBy(e => e.Value.sketchbookNumber).ThenBy(e => e.Value.pageNumber)) 
     {
-      int bookNumber = sketchBookEntry.Key;
-      ArtList sketchBookList = sketchBookEntry.Value;
+      int bookNumber = sketchBookEntry.Value.sketchbookNumber;
 
-      html.Clear();
+      if (bookNumber != lastSketchbookNumber)  // We've hit a new sketchbook, so we need to start a new HTML page (but first write out the previous one if this isn't the first sketchbook)
+      {
+        if (lastSketchbookNumber != -1) 
+        {
+          // If this is not the first sketchbook, we need to write out the previous one before starting a new one
+          html.AppendLine(@"</div>"); // close container
+          html.AppendLine(GetHtmlFooter());
+          await File.WriteAllTextAsync(Path.Combine(_outputDirectory, $"sketchbook{lastSketchbookNumber}.html"), html.ToString());
+        }
+        lastSketchbookNumber = bookNumber;
+        html.Clear();
 
-      // Now generate the HTML page for the sketchbook list
-      html.AppendLine(GetHtmlHeader($"Sketchbook {bookNumber} - Keith Long Archive"));
+        // Now generate the HTML page for the sketchbook list
+        html.AppendLine(GetHtmlHeader($"Sketchbook {bookNumber} - Keith Long Archive"));
 
-      html.AppendLine(@"
+        html.AppendLine(@"
         <div class='container'>
           <h1>Sketchbooks</h1>
           <p class='subtitle'><a href='index.html'>← Back to Home</a></p>");
 
-          // Add navigation for other sketchbooks if there are multiple
-          if (sketchBookLists.Count > 1)
+        // Add navigation for other sketchbooks if there are multiple
+        if (sketchbookNumbers.Count > 1)
+        {
+          html.AppendLine("<div class='sketchbook-nav'><span class='sketchbook-nav-label'>Sketchbook:</span>");
+          foreach (var entry in sketchbookNumbers)
           {
-            html.AppendLine("<div class='sketchbook-nav'><span class='sketchbook-nav-label'>Sketchbook:</span>");
-            foreach (var entry in sketchBookLists)
-            {
-              if (entry.Key == bookNumber)
-                html.AppendLine($"<span class='nav-button sketchbook-nav-button active'>{entry.Key}</span>");
-              else
-                html.AppendLine($"<a href='sketchbook{entry.Key}.html' class='nav-button sketchbook-nav-button'>{entry.Key}</a>");
-            }
-            html.AppendLine("</div>");
+            if (entry == bookNumber)
+              html.AppendLine($"<span class='nav-button sketchbook-nav-button active'>{entry}</span>");
+            else
+              html.AppendLine($"<a href='sketchbook{entry}.html' class='nav-button sketchbook-nav-button'>{entry}</a>");
           }
+          html.AppendLine("</div>");
+        }
 
-      html.AppendLine(@"
+        html.AppendLine(@"
         </div>
         <div class='page-controls'>
             <span class='page-controls-label'>Hover effects:</span>
-            <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom</label>
+            <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom (z)</label>
         </div>
+        <script>
+        document.addEventListener('keydown', function(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
+            if (e.key === 'p' || e.key === 'P') document.getElementById('chk-thumb-hover')?.click();
+            if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        </script>
         <div class='container'>");
 
-    html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
-    foreach (var artItem in sketchBookList.artworks) // while (await reader.ReadAsync())
-    {
-      Artwork art = artItem.Value;
+        html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
+      }
+
+      Artwork art = sketchBookEntry.Value;
 
       html.AppendLine($@"<div class='gallery-item'>");
       html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)'/></a><br/>
         <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
 
-      html.AppendLine($@"<div class='gallery-item'>");
       html.AppendLine($"  <div class='desc'>");
-      html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.pageNumber.ToString(), " ")}");
       html.AppendLine($"    {BlankOrWithBR(art.ctDate.ToShortDateString(), "  ")}");
+
+      html.AppendLine($"    {BlankOrWithBR(art.location, "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
-      html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  ")}");
-      html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.people, "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
-      html.AppendLine($"    {BlankOrWithBR(art.humanId, "  ")}");
+
+      // technical detail items
+      html.AppendLine($"{BlankOrComment(art.id, "id: ")}");
+      html.AppendLine($"{BlankOrComment(art.artworkID!, "artid: ")}");
+      html.AppendLine($"{BlankOrComment(art.humanId, "humandId: ")}");
+      html.AppendLine($"{BlankOrComment(art.fileName, "filename: ")}");
+
       html.AppendLine($"  </div>");
 
       html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>", art.errors)}</div>");
-
-      if (art.states.HasFlag(StatesType.noDB))
-        html.AppendLine($"<div class='desc'>Bucket name: {art.iFileName}<br/></div>");
 
       if (art.states.HasFlag(StatesType.jpgFound))
         html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
       if (art.states.HasFlag(StatesType.tifFound))
         html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
 
-      html.AppendLine($"</div></div>  <!-- gallery item -->");
+      html.AppendLine($"</div>  <!-- gallery item -->");
     }
 
     html.AppendLine(@"</div>");
     html.AppendLine(GetHtmlFooter());
 
-    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, $"sketchbook{bookNumber}.html"), html.ToString());
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, $"sketchbook{lastSketchbookNumber}.html"), html.ToString());
     #endregion  
     
     }
 
-  }
+  
 
   private async Task GenerateArtworkListPageOld()
   {
