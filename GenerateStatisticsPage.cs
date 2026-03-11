@@ -1,5 +1,5 @@
 
- #pragma warning disable CA2249 
+ #pragma warning disable CA2249
 
 using Microsoft.Extensions.Configuration;
 using Npgsql;
@@ -39,6 +39,28 @@ public partial class ArtworkHTML
             FROM sketch
             WHERE sketch_dt IS NOT NULL and EXTRACT(YEAR FROM sketch_dt) > 1900";
 
+  const string artworkYearSQL = @"
+            SELECT
+                EXTRACT(YEAR FROM create_dt)::int as year,
+                COUNT(*) as piece_count,
+                MIN(create_dt) as start_date,
+                MAX(create_dt) as end_date,
+                COUNT(DISTINCT NULLIF(TRIM(series), '')) as series_count
+            FROM artwork
+            WHERE create_dt IS NOT NULL AND EXTRACT(YEAR FROM create_dt) > 1900
+            GROUP BY EXTRACT(YEAR FROM create_dt)
+            ORDER BY year ASC";
+
+  const string sketchbookDetailSQL = @"
+            SELECT
+                sketchbook_number,
+                COUNT(*) as page_count,
+                MIN(sketch_dt) as start_date,
+                MAX(sketch_dt) as end_date
+            FROM sketch
+            GROUP BY sketchbook_number
+            ORDER BY sketchbook_number ASC";
+
 
   private async Task GenerateStatisticsPage()
   {
@@ -73,6 +95,66 @@ public partial class ArtworkHTML
       earliestSketchDate = sketchReader.IsDBNull(2) ? null : sketchReader.GetDateTime(2).ToString("yyyy");
       latestSketchDate = sketchReader.IsDBNull(3) ? null : sketchReader.GetDateTime(3).ToString("yyyy");
     }
+    await sketchReader.DisposeAsync();
+    await sketchCmd.DisposeAsync();
+
+    // Artwork year breakdown
+    var artworkYears = new List<(int Year, int Count, string Start, string End, int SeriesCount)>();
+    await using var yearCmd = new NpgsqlCommand(artworkYearSQL, connection);
+    await using var yearReader = await yearCmd.ExecuteReaderAsync();
+    while (await yearReader.ReadAsync())
+    {
+      artworkYears.Add((
+        yearReader.GetInt32(0),
+        yearReader.GetInt32(1),
+        yearReader.IsDBNull(2) ? "" : yearReader.GetDateTime(2).ToString("MMM d, yyyy"),
+        yearReader.IsDBNull(3) ? "" : yearReader.GetDateTime(3).ToString("MMM d, yyyy"),
+        yearReader.IsDBNull(4) ? 0 : yearReader.GetInt32(4)
+      ));
+    }
+    await yearReader.DisposeAsync();
+    await yearCmd.DisposeAsync();
+
+    // Sketchbook breakdown
+    var sketchbookDetails = new List<(int Number, int Pages, string Start, string End)>();
+    await using var sbDetailCmd = new NpgsqlCommand(sketchbookDetailSQL, connection);
+    await using var sbDetailReader = await sbDetailCmd.ExecuteReaderAsync();
+    while (await sbDetailReader.ReadAsync())
+    {
+      sketchbookDetails.Add((
+        sbDetailReader.IsDBNull(0) ? 0 : sbDetailReader.GetInt32(0),
+        sbDetailReader.GetInt32(1),
+        sbDetailReader.IsDBNull(2) ? "" : sbDetailReader.GetDateTime(2).ToString("MMM d, yyyy"),
+        sbDetailReader.IsDBNull(3) ? "" : sbDetailReader.GetDateTime(3).ToString("MMM d, yyyy")
+      ));
+    }
+
+    // Build artwork year detail rows
+    var artworkYearRows = new StringBuilder();
+    foreach (var row in artworkYears)
+    {
+      artworkYearRows.AppendLine($@"
+                <tr>
+                    <td>{row.Year}</td>
+                    <td>{row.Count}</td>
+                    <td>{row.Start}</td>
+                    <td>{row.End}</td>
+                    <td>{row.SeriesCount}</td>
+                </tr>");
+    }
+
+    // Build sketchbook detail rows
+    var sketchbookRows = new StringBuilder();
+    foreach (var row in sketchbookDetails)
+    {
+      sketchbookRows.AppendLine($@"
+                <tr>
+                    <td><a href='sketchbook{row.Number}.html'>Sketchbook {row.Number}</a></td>
+                    <td>{row.Pages}</td>
+                    <td>{row.Start}</td>
+                    <td>{row.End}</td>
+                </tr>");
+    }
 
     var html = new StringBuilder();
     html.AppendLine(GetHtmlHeader("Archive Statistics - Keith Long Archive"));
@@ -100,6 +182,21 @@ public partial class ArtworkHTML
                 <div class='stat-label'>Date Range</div>
             </div>
         </div>
+        <details class='stats-details'>
+            <summary>Details</summary>
+            <table class='stats-table'>
+                <thead>
+                    <tr>
+                        <th>Year</th>
+                        <th>Pieces</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Named Series</th>
+                    </tr>
+                </thead>
+                <tbody>" + artworkYearRows + @"</tbody>
+            </table>
+        </details>
 
         <h2>Sketchbooks</h2>
         <div class='stats-grid'>
@@ -116,6 +213,20 @@ public partial class ArtworkHTML
                 <div class='stat-label'>Date Range</div>
             </div>
         </div>
+        <details class='stats-details'>
+            <summary>Details</summary>
+            <table class='stats-table'>
+                <thead>
+                    <tr>
+                        <th>Sketchbook</th>
+                        <th>Pages</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                    </tr>
+                </thead>
+                <tbody>" + sketchbookRows + @"</tbody>
+            </table>
+        </details>
 
         <div class='navigation'>
             <a href='artworksplus.html' class='nav-button'>Browse All Artworks</a>
