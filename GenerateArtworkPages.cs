@@ -140,6 +140,9 @@ public partial class ArtworkHTML
       string pubNotes = reader.IsDBNull(10) ? "" : reader.GetString(10);
 
       Artwork sketch = new(airtable_id, ctDate, location, people, medium, sketchbookNumber, pageNumber, artworkID, pubNotes, filename);
+
+
+      
       sketchBookList.AddArtwork(sketch);  
     } // while reader.ReadAsync()
     sketchreader.Close();
@@ -238,7 +241,7 @@ public partial class ArtworkHTML
 
           if (dir == "scans" && ext == "tif" && filename.StartsWith("KLA")) // It's a sketchbook TIF so add it to the sketchbook list
           {
-            sketchBookList.AddBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
+            sketchBookList.AddSketchBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
             continue;
           }
 
@@ -258,7 +261,7 @@ public partial class ArtworkHTML
             }
             if (dir == "scans/jpg" && filename.StartsWith("KLA")) // It's a sketchbook image so add it to the sketchbook list
             {
-              sketchBookList.AddBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
+              sketchBookList.AddSketchBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
               continue;
             }
             else  // It's a polaroid image so add it to the polaroid list
@@ -633,6 +636,7 @@ public partial class ArtworkHTML
           html.AppendLine(@"</div>"); // close container
           html.AppendLine(GetHtmlFooter());
           await File.WriteAllTextAsync(Path.Combine(_outputDirectory, $"sketchbook{lastSketchbookNumber}.html"), html.ToString());
+          Console.WriteLine($"  ✓ sketchbook{lastSketchbookNumber}.html");
         }
         lastSketchbookNumber = bookNumber;
         html.Clear();
@@ -666,12 +670,12 @@ public partial class ArtworkHTML
             <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom (z)</label>
         </div>
         <script>
-        document.addEventListener('keydown', function(e) {
+          document.addEventListener('keydown', function(e) {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
             if (e.key === 'p' || e.key === 'P') document.getElementById('chk-thumb-hover')?.click();
             if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
+          });
         </script>
         <div class='container'>");
 
@@ -715,6 +719,8 @@ public partial class ArtworkHTML
     html.AppendLine(GetHtmlFooter());
 
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, $"sketchbook{lastSketchbookNumber}.html"), html.ToString());
+    Console.WriteLine($"  ✓ sketchbook{lastSketchbookNumber}.html");
+
     #endregion  
     
     }

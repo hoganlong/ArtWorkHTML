@@ -15,14 +15,12 @@ namespace ArtWorkHTML;
 using System;
 using System.Collections.Generic;
 
+
+
+
 public partial class ArtworkHTML
 {
-  private async Task GenerateStatisticsPage()
-  {
-    await using var connection = new NpgsqlConnection(_connectionString);
-    await connection.OpenAsync();
-
-    var sql = @"
+  const string statsSQL = @"
             SELECT
                 COUNT(*) as total_artworks,
                 COUNT(DISTINCT series) as total_series,
@@ -32,7 +30,13 @@ public partial class ArtworkHTML
             FROM artwork
             WHERE create_dt IS NOT NULL and EXTRACT(YEAR FROM create_dt) > 1900";
 
-    await using var cmd = new NpgsqlCommand(sql, connection);
+
+  private async Task GenerateStatisticsPage()
+  {
+    await using var connection = new NpgsqlConnection(_connectionString);
+    await connection.OpenAsync();
+
+    await using var cmd = new NpgsqlCommand(statsSQL, connection);
     await using var reader = await cmd.ExecuteReaderAsync();
 
     int totalArtworks = 0, totalSeries = 0, totalLocations = 0;
