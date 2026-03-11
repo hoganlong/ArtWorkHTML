@@ -1154,6 +1154,51 @@ h1 {
     font-size: 0.9em;
 }
 
+.stats-details {
+    margin: -20px 0 30px 0;
+}
+
+.stats-details summary {
+    cursor: pointer;
+    color: #3498db;
+    font-size: 0.9em;
+    padding: 4px 0;
+    user-select: none;
+}
+
+.stats-details summary:hover {
+    text-decoration: underline;
+}
+
+.stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+    font-size: 0.9em;
+}
+
+.stats-table th {
+    background: #f0f4f8;
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 2px solid #dde3ea;
+    font-weight: 600;
+    color: #555;
+}
+
+.stats-table td {
+    padding: 6px 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.stats-table tr:last-child td {
+    border-bottom: none;
+}
+
+.stats-table tr:hover td {
+    background: #f9fbfd;
+}
+
 .navigation {
     display: flex;
     gap: 15px;
