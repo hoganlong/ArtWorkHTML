@@ -30,6 +30,15 @@ public partial class ArtworkHTML
             FROM artwork
             WHERE create_dt IS NOT NULL and EXTRACT(YEAR FROM create_dt) > 1900";
 
+  const string sketchStatsSQL = @"
+            SELECT
+                COUNT(DISTINCT sketchbook_number) as total_sketchbooks,
+                COUNT(*) as total_pages,
+                MIN(sketch_dt) as earliest_date,
+                MAX(sketch_dt) as latest_date
+            FROM sketch
+            WHERE sketch_dt IS NOT NULL and EXTRACT(YEAR FROM sketch_dt) > 1900";
+
 
   private async Task GenerateStatisticsPage()
   {
@@ -50,6 +59,20 @@ public partial class ArtworkHTML
       earliestDate = reader.IsDBNull(3) ? null : reader.GetDateTime(3).ToString("yyyy");
       latestDate = reader.IsDBNull(4) ? null : reader.GetDateTime(4).ToString("yyyy");
     }
+    await reader.DisposeAsync();
+    await cmd.DisposeAsync();
+
+    int totalSketchbooks = 0, totalSketchPages = 0;
+    string? earliestSketchDate = null, latestSketchDate = null;
+    await using var sketchCmd = new NpgsqlCommand(sketchStatsSQL, connection);
+    await using var sketchReader = await sketchCmd.ExecuteReaderAsync();
+    if (await sketchReader.ReadAsync())
+    {
+      totalSketchbooks = sketchReader.IsDBNull(0) ? 0 : sketchReader.GetInt32(0);
+      totalSketchPages = sketchReader.IsDBNull(1) ? 0 : sketchReader.GetInt32(1);
+      earliestSketchDate = sketchReader.IsDBNull(2) ? null : sketchReader.GetDateTime(2).ToString("yyyy");
+      latestSketchDate = sketchReader.IsDBNull(3) ? null : sketchReader.GetDateTime(3).ToString("yyyy");
+    }
 
     var html = new StringBuilder();
     html.AppendLine(GetHtmlHeader("Archive Statistics - Keith Long Archive"));
@@ -58,6 +81,7 @@ public partial class ArtworkHTML
         <h1>Archive Statistics</h1>
         <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
 
+        <h2>Artworks</h2>
         <div class='stats-grid'>
             <div class='stat-card'>
                 <div class='stat-number'>" + totalArtworks + @"</div>
@@ -73,6 +97,22 @@ public partial class ArtworkHTML
             </div>
             <div class='stat-card'>
                 <div class='stat-number'>" + earliestDate + " - " + latestDate + @"</div>
+                <div class='stat-label'>Date Range</div>
+            </div>
+        </div>
+
+        <h2>Sketchbooks</h2>
+        <div class='stats-grid'>
+            <div class='stat-card'>
+                <div class='stat-number'>" + totalSketchbooks + @"</div>
+                <div class='stat-label'>Sketchbooks</div>
+            </div>
+            <div class='stat-card'>
+                <div class='stat-number'>" + totalSketchPages + @"</div>
+                <div class='stat-label'>Sketchbook Pages</div>
+            </div>
+            <div class='stat-card'>
+                <div class='stat-number'>" + earliestSketchDate + " - " + latestSketchDate + @"</div>
                 <div class='stat-label'>Date Range</div>
             </div>
         </div>
