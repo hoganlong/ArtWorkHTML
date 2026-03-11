@@ -64,10 +64,36 @@ namespace ArtWorkHTML
       }
     }
 
-    public void AddBucketFile(string dir, string name, string ext, DateTime? lastModified,bool removeServerError = false)
+    public void AddSketchBucketFile(string dir, string name, string ext, DateTime? lastModified,bool removeServerError = false)
+    {
+      Artwork a = this.AddBucketFile(dir, name, ext, lastModified, removeServerError);
+
+      a.myType = ArtType.Sketch;
+
+      var nameParts = name.Split('_'); // Expecting format like "KLA_1_1.tif" for sketchbook files 
+      char lastChar = nameParts[2][^1];
+      string letterPart = "";
+      if (char.IsLetter(lastChar))
+      {
+        letterPart = lastChar.ToString();
+        nameParts[2] = nameParts[2][..^1];
+      }
+      if (nameParts.Length >= 3 && int.TryParse(nameParts[1], out int sketchbookNumber) && int.TryParse(nameParts[2].Split('.')[0], out int pageNumber))
+      {
+        a.pageNumber = pageNumber;
+        a.sketchbookNumber = sketchbookNumber;
+        a.humanId = $"{sketchbookNumber}_{pageNumber}{letterPart}";
+      } 
+      else
+      {
+        a.errors.Add($"Filename '{name}' does not match expected sketchbook format 'KLA_sketchbookNumber_pageNumber.ext'.");
+      }
+    }
+
+    public Artwork AddBucketFile(string dir, string name, string ext, DateTime? lastModified,bool removeServerError = false)
     {
       var listElement = artworks.FirstOrDefault(x => x.Value.fileName == name);
-      var artwork = new Artwork(dir,name,removeServerError);
+      Artwork artwork = new Artwork(dir,name,removeServerError);
 
       if (listElement.Key == null)
       {
@@ -94,6 +120,7 @@ namespace ArtWorkHTML
         // should check if in correct (expected) location in bucket, but for now just set the state
         artwork.states |= StatesType.tifFound; // Set tif found state
       }
+      return artwork;
     }
   } // ArtList
   
@@ -208,7 +235,18 @@ namespace ArtWorkHTML
       this.artworkID = artworkID;
       this.pubNotes = pubNotes;
       this.fileName = fileName;
-      this.humanId = $"KLA_{sketchbookNumber}_{pageNumber}";
+      char lastChar = fileName[^1];
+      this.humanId = $"KLA_{sketchbookNumber}_{pageNumber}{(char.IsLetter(lastChar)? lastChar.ToString() : "")}";
+       if (string.IsNullOrEmpty(fileName))
+      { // set no image state if we don't have an image file name
+        this.states |= StatesType.NoImage;
+        // Use Front image as fallback if available
+        this.errors.Add("Bucket image not found");
+      }
+      else
+      { // Remove no image state if we have an image file name
+        this.states &= ~StatesType.NoImage;
+      }
       // the following is not "tested" in code and should 
       tifURL = baseURL + "scans/" + fileName + ".tif";
       jpgURL = baseURL + "scans/jpg/" + fileName + ".jpg";

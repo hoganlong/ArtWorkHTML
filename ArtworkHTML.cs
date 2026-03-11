@@ -122,6 +122,7 @@ public partial class ArtworkHTML
 
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "index.html"), html.ToString());
   }
+  
   private static string BlankOrComment(string inS, string prepend = "")
   {
     if (!string.IsNullOrEmpty(inS))
