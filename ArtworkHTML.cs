@@ -1170,10 +1170,36 @@ h1 {
     text-decoration: underline;
 }
 
+.stats-tab-bar {
+    display: flex;
+    gap: 6px;
+    margin: 12px 0 0 0;
+}
+
+.stats-tab {
+    padding: 5px 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f5f5f5;
+    cursor: pointer;
+    font-size: 0.85em;
+    color: #555;
+}
+
+.stats-tab:hover {
+    background: #e8e8e8;
+}
+
+.stats-tab.active {
+    background: #3498db;
+    border-color: #3498db;
+    color: white;
+}
+
 .stats-table {
-    width: 100%;
+    width: auto;
     border-collapse: collapse;
-    margin-top: 12px;
+    margin: 12px auto 0 auto;
     font-size: 0.9em;
 }
 
@@ -1188,7 +1214,7 @@ h1 {
 
 .stats-table td {
     padding: 6px 12px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #ccc;
 }
 
 .stats-table tr:last-child td {
