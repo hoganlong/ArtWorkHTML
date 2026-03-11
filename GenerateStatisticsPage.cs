@@ -45,11 +45,37 @@ public partial class ArtworkHTML
                 COUNT(*) as piece_count,
                 MIN(create_dt) as start_date,
                 MAX(create_dt) as end_date,
-                COUNT(DISTINCT NULLIF(TRIM(series), '')) as series_count
+                COUNT(DISTINCT NULLIF(TRIM(series), '')) as series_count,
+                COUNT(*) FILTER (WHERE sold IS NOT NULL) as sold_count
+            FROM artwork
+            WHERE create_dt IS NOT NULL AND EXTRACT(YEAR FROM create_dt) >= 1900
+            GROUP BY EXTRACT(YEAR FROM create_dt)
+            ORDER BY CASE WHEN EXTRACT(YEAR FROM create_dt) = 1900 THEN 9999 ELSE EXTRACT(YEAR FROM create_dt) END ASC";
+
+  const string artworkSeriesSQL = @"
+            SELECT
+                COALESCE(NULLIF(TRIM(series), ''), '(no series)') as series_name,
+                COUNT(*) as piece_count,
+                MIN(create_dt) as start_date,
+                MAX(create_dt) as end_date,
+                COUNT(*) FILTER (WHERE sold IS NOT NULL) as sold_count
             FROM artwork
             WHERE create_dt IS NOT NULL AND EXTRACT(YEAR FROM create_dt) > 1900
-            GROUP BY EXTRACT(YEAR FROM create_dt)
-            ORDER BY year ASC";
+            GROUP BY COALESCE(NULLIF(TRIM(series), ''), '(no series)')
+            ORDER BY CASE WHEN COALESCE(NULLIF(TRIM(series), ''), '(no series)') = '(no series)' THEN 9999 ELSE 0 END ASC, series_name ASC";
+
+// does not count date of 1900 TODO
+  const string artworkLocationSQL = @"
+            SELECT
+                COALESCE(NULLIF(TRIM(location), ''), '(no location)') as location_name,
+                COUNT(*) as piece_count,
+                MIN(create_dt) as start_date,
+                MAX(create_dt) as end_date,
+                COUNT(*) FILTER (WHERE sold IS NOT NULL) as sold_count
+            FROM artwork
+            WHERE create_dt IS NOT NULL AND EXTRACT(YEAR FROM create_dt) > 1900
+            GROUP BY COALESCE(NULLIF(TRIM(location), ''), '(no location)')
+            ORDER BY CASE WHEN COALESCE(NULLIF(TRIM(location), ''), '(no location)') = '(no location)' THEN 9999 ELSE 0 END ASC, location_name ASC";
 
   const string sketchbookDetailSQL = @"
             SELECT
@@ -99,7 +125,7 @@ public partial class ArtworkHTML
     await sketchCmd.DisposeAsync();
 
     // Artwork year breakdown
-    var artworkYears = new List<(int Year, int Count, string Start, string End, int SeriesCount)>();
+    var artworkYears = new List<(int Year, int Count, string Start, string End, int SeriesCount, int Sold)>();
     await using var yearCmd = new NpgsqlCommand(artworkYearSQL, connection);
     await using var yearReader = await yearCmd.ExecuteReaderAsync();
     while (await yearReader.ReadAsync())
@@ -109,11 +135,46 @@ public partial class ArtworkHTML
         yearReader.GetInt32(1),
         yearReader.IsDBNull(2) ? "" : yearReader.GetDateTime(2).ToString("MMM d, yyyy"),
         yearReader.IsDBNull(3) ? "" : yearReader.GetDateTime(3).ToString("MMM d, yyyy"),
-        yearReader.IsDBNull(4) ? 0 : yearReader.GetInt32(4)
+        yearReader.IsDBNull(4) ? 0 : yearReader.GetInt32(4),
+        yearReader.IsDBNull(5) ? 0 : yearReader.GetInt32(5)
       ));
     }
     await yearReader.DisposeAsync();
     await yearCmd.DisposeAsync();
+
+    // Artwork series breakdown
+    var artworkSeries = new List<(string Name, int Count, string Start, string End, int Sold)>();
+    await using var seriesCmd = new NpgsqlCommand(artworkSeriesSQL, connection);
+    await using var seriesReader = await seriesCmd.ExecuteReaderAsync();
+    while (await seriesReader.ReadAsync())
+    {
+      artworkSeries.Add((
+        seriesReader.IsDBNull(0) ? "" : seriesReader.GetString(0),
+        seriesReader.GetInt32(1),
+        seriesReader.IsDBNull(2) ? "" : seriesReader.GetDateTime(2).ToString("MMM d, yyyy"),
+        seriesReader.IsDBNull(3) ? "" : seriesReader.GetDateTime(3).ToString("MMM d, yyyy"),
+        seriesReader.IsDBNull(4) ? 0 : seriesReader.GetInt32(4)
+      ));
+    }
+    await seriesReader.DisposeAsync();
+    await seriesCmd.DisposeAsync();
+
+    // Artwork location breakdown
+    var artworkLocations = new List<(string Name, int Count, string Start, string End, int Sold)>();
+    await using var locationCmd = new NpgsqlCommand(artworkLocationSQL, connection);
+    await using var locationReader = await locationCmd.ExecuteReaderAsync();
+    while (await locationReader.ReadAsync())
+    {
+      artworkLocations.Add((
+        locationReader.IsDBNull(0) ? "" : locationReader.GetString(0),
+        locationReader.GetInt32(1),
+        locationReader.IsDBNull(2) ? "" : locationReader.GetDateTime(2).ToString("MMM d, yyyy"),
+        locationReader.IsDBNull(3) ? "" : locationReader.GetDateTime(3).ToString("MMM d, yyyy"),
+        locationReader.IsDBNull(4) ? 0 : locationReader.GetInt32(4)
+      ));
+    }
+    await locationReader.DisposeAsync();
+    await locationCmd.DisposeAsync();
 
     // Sketchbook breakdown
     var sketchbookDetails = new List<(int Number, int Pages, string Start, string End)>();
@@ -133,13 +194,45 @@ public partial class ArtworkHTML
     var artworkYearRows = new StringBuilder();
     foreach (var row in artworkYears)
     {
+      string yearDisplay = row.Year == 1900 ? "Unknown" : row.Year.ToString();
+      string yearSeriesDisplay = row.SeriesCount == 0 ? "" : row.SeriesCount.ToString();
+      string yearSoldDisplay = row.Sold == 0 ? "" : row.Sold.ToString();
       artworkYearRows.AppendLine($@"
                 <tr>
-                    <td>{row.Year}</td>
+                    <td>{yearDisplay}</td>
                     <td>{row.Count}</td>
                     <td>{row.Start}</td>
                     <td>{row.End}</td>
-                    <td>{row.SeriesCount}</td>
+                    <td>{yearSeriesDisplay}</td>
+                    <td>{yearSoldDisplay}</td>
+                </tr>");
+    }
+
+    // Build artwork series detail rows
+    var artworkSeriesRows = new StringBuilder();
+    foreach (var row in artworkSeries)
+    {
+      artworkSeriesRows.AppendLine($@"
+                <tr>
+                    <td>{row.Name}</td>
+                    <td>{row.Count}</td>
+                    <td>{row.Start}</td>
+                    <td>{row.End}</td>
+                    <td>{row.Sold}</td>
+                </tr>");
+    }
+
+    // Build artwork location detail rows
+    var artworkLocationRows = new StringBuilder();
+    foreach (var row in artworkLocations)
+    {
+      artworkLocationRows.AppendLine($@"
+                <tr>
+                    <td>{row.Name}</td>
+                    <td>{row.Count}</td>
+                    <td>{row.Start}</td>
+                    <td>{row.End}</td>
+                    <td>{row.Sold}</td>
                 </tr>");
     }
 
@@ -159,6 +252,16 @@ public partial class ArtworkHTML
     var html = new StringBuilder();
     html.AppendLine(GetHtmlHeader("Archive Statistics - Keith Long Archive"));
     html.AppendLine(@"
+    <script>
+    function showStatsView(btn, viewId) {
+        var container = btn.closest('.stats-views');
+        container.querySelectorAll('.stats-view').forEach(function(v) { v.style.display = 'none'; });
+        container.querySelectorAll('.stats-tab').forEach(function(t) { t.classList.remove('active'); });
+        document.getElementById(viewId).style.display = '';
+        btn.classList.add('active');
+    }
+    </script>
+
     <div class='container'>
         <h1>Archive Statistics</h1>
         <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
@@ -184,18 +287,37 @@ public partial class ArtworkHTML
         </div>
         <details class='stats-details'>
             <summary>Details</summary>
-            <table class='stats-table'>
-                <thead>
-                    <tr>
-                        <th>Year</th>
-                        <th>Pieces</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
-                        <th>Named Series</th>
-                    </tr>
-                </thead>
-                <tbody>" + artworkYearRows + @"</tbody>
-            </table>
+            <div class='stats-views'>
+                <div class='stats-tab-bar'>
+                    <button class='stats-tab active' onclick='showStatsView(this, ""aw-year"")'>By Year</button>
+                    <button class='stats-tab' onclick='showStatsView(this, ""aw-series"")'>By Series</button>
+                    <button class='stats-tab' onclick='showStatsView(this, ""aw-location"")'>By Location</button>
+                </div>
+                <div id='aw-year' class='stats-view'>
+                    <table class='stats-table'>
+                        <thead><tr>
+                            <th>Year</th><th>Pieces</th><th>Start Date</th><th>End Date</th><th>Named Series</th><th>Sold</th>
+                        </tr></thead>
+                        <tbody>" + artworkYearRows + @"</tbody>
+                    </table>
+                </div>
+                <div id='aw-series' class='stats-view' style='display:none'>
+                    <table class='stats-table'>
+                        <thead><tr>
+                            <th>Series</th><th>Count</th><th>Start Date</th><th>End Date</th><th>Sold</th>
+                        </tr></thead>
+                        <tbody>" + artworkSeriesRows + @"</tbody>
+                    </table>
+                </div>
+                <div id='aw-location' class='stats-view' style='display:none'>
+                    <table class='stats-table'>
+                        <thead><tr>
+                            <th>Location</th><th>Count</th><th>Start Date</th><th>End Date</th><th>Sold</th>
+                        </tr></thead>
+                        <tbody>" + artworkLocationRows + @"</tbody>
+                    </table>
+                </div>
+            </div>
         </details>
 
         <h2>Sketchbooks</h2>
