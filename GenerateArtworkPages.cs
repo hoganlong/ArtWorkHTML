@@ -72,7 +72,8 @@ public partial class ArtworkHTML
     const string sketchSQL = @"
        SELECT s.airtable_id, s.sketch_dt, s.description, s.sketch_loc, s.sketch_people,
               s.sketch_medium, s.sketchbook_number, s.page_number, s.artwork_id, s.filename, s.pub_notes
-       FROM sketch s 
+       FROM sketch s
+       WHERE s.hide IS NOT TRUE
        ORDER BY s.sketchbook_number ASC, s.page_number ASC";
 
   private async Task GenerateArtworkPages()
@@ -127,22 +128,20 @@ public partial class ArtworkHTML
 
     while (await sketchreader.ReadAsync())
     {
-      string airtable_id= reader.IsDBNull(0) ? "" : reader.GetString(0);
-      DateTime ctDate = reader.IsDBNull(1) ? DateTime.MinValue : reader.GetDateTime(1);
-      string description = reader.IsDBNull(2) ? "" : reader.GetString(2);
-      string location = reader.IsDBNull(3) ? "" : reader.GetString(3);
-      string people = reader.IsDBNull(4) ? "" : reader.GetString(4);
-      string medium = reader.IsDBNull(5) ? "" : reader.GetString(5);
-      int sketchbookNumber = reader.IsDBNull(6) ? 0 : reader.GetInt32(6);
-      int pageNumber = reader.IsDBNull(7) ? 0 : reader.GetInt32(7);
-      string? artworkID = reader.IsDBNull(8) ? null : reader.GetString(8);
-      string filename = reader.IsDBNull(9) ? "" : reader.GetString(9);
-      string pubNotes = reader.IsDBNull(10) ? "" : reader.GetString(10);
+      string airtable_id= sketchreader.IsDBNull(0) ? "" : sketchreader.GetString(0);
+      DateTime ctDate = sketchreader.IsDBNull(1) ? DateTime.MinValue : sketchreader.GetDateTime(1);
+      string description = sketchreader.IsDBNull(2) ? "" : sketchreader.GetString(2);
+      string location = sketchreader.IsDBNull(3) ? "" : sketchreader.GetString(3);
+      string people = sketchreader.IsDBNull(4) ? "" : sketchreader.GetString(4);
+      string medium = sketchreader.IsDBNull(5) ? "" : sketchreader.GetString(5);
+      int sketchbookNumber = sketchreader.IsDBNull(6) ? 0 : sketchreader.GetInt32(6);
+      int pageNumber = sketchreader.IsDBNull(7) ? 0 : sketchreader.GetInt32(7);
+      string? artworkID = sketchreader.IsDBNull(8) ? null : sketchreader.GetString(8);
+      string filename = sketchreader.IsDBNull(9) ? "" : sketchreader.GetString(9);
+      string pubNotes = sketchreader.IsDBNull(10) ? "" : sketchreader.GetString(10);
 
       Artwork sketch = new(airtable_id, ctDate, location, people, medium, sketchbookNumber, pageNumber, artworkID, pubNotes, filename);
 
-
-      
       sketchBookList.AddArtwork(sketch);  
     } // while reader.ReadAsync()
     sketchreader.Close();
@@ -175,53 +174,6 @@ public partial class ArtworkHTML
       int JPGBucketFiles = 0;
       int atchBucketFiles = 0;
 
-      //      string title = $"Keith Long Archive Polaroid Image List (generated - {DateTime.Now.ToLongDateString()} at {DateTime.Now.ToLongTimeString()}";
-      /*
-            StringBuilder htmlContent = new StringBuilder();
-            htmlContent.Append("<!DOCTYPE html>\n");
-            htmlContent.Append("<html>\n");
-            htmlContent.AppendLine("<title>"+title+"</title>");
-
-            htmlContent.Append("<style>\n");
-            htmlContent.Append("  div.gallery \n");
-            htmlContent.Append("  {\n");
-            htmlContent.Append("    display: flex;\n");
-            htmlContent.Append("    flex-wrap: wrap;\n");
-            htmlContent.Append("    justify-content: flex-start;\n");
-            htmlContent.Append("  }\n");
-
-            htmlContent.Append("  div.gallery-item\n");
-            htmlContent.Append("  {\n");
-            htmlContent.Append("    margin: 5px;\n");
-            htmlContent.Append("    border: 1px solid #ccc;\n");
-            htmlContent.Append("    width: 300px;\n");
-            htmlContent.Append("  }\n");
-
-            htmlContent.Append("  div.gallery-item:hover\n");
-            htmlContent.Append("  {\n");
-            htmlContent.Append("    border: 1px solid #777;\n");
-            htmlContent.Append("  }\n");
-
-            htmlContent.Append("  div.gallery-item img\n");
-            htmlContent.Append("  {\n");
-            htmlContent.Append("    width: 100%;\n");
-            htmlContent.Append("    height: auto;\n");
-            htmlContent.Append("  }\n");
-
-            htmlContent.Append("  div.gallery-item div.desc\n");
-            htmlContent.Append("  {\n");
-            htmlContent.Append("    padding: 5px;\n");
-            htmlContent.Append("    text-align: center;\n");
-            htmlContent.Append("  }\n");
-            htmlContent.Append("</style>\n");
-
-            htmlContent.Append("</style>\n");
-            htmlContent.Append("</head>\n");
-
-            htmlContent.Append("<body>\n");
-            htmlContent.AppendLine("<h1>"+title+"</h1><br/>");
-            htmlContent.Append("<div class= \"gallery\" >\n");
-      */
       do
       {
         response = await s3Client.ListObjectsV2Async(request);
@@ -239,6 +191,15 @@ public partial class ArtworkHTML
           string ext = (dotLoc == -1) ? "" : filename[(dotLoc + 1)..].ToLower();
           DateTime? lastModified = obj.LastModified;
 
+          if (ext == "jpg")
+          {
+            JPGBucketFiles++; 
+          }
+          if (ext == "tif")
+          {
+            tifBucketFiles++;
+          }  
+
           if (dir == "scans" && ext == "tif" && filename.StartsWith("KLA")) // It's a sketchbook TIF so add it to the sketchbook list
           {
             sketchBookList.AddSketchBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
@@ -248,7 +209,6 @@ public partial class ArtworkHTML
           if (fullPath.Length > 10 && fullPath[0..9] == "scans/jpg")
           {
             // not doing anything with scans right now, but want to keep track of how many there are in the bucket
-            scanJPGBucketFiles++;
             if (fullPath.EndsWith('/'))
             {
               continue;
@@ -266,7 +226,6 @@ public partial class ArtworkHTML
             }
             else  // It's a polaroid image so add it to the polaroid list
             {
-            //  polaroidList.AddBucketFile("scans/", fullPath[10..], "jpg", obj.LastModified);
               polaroidList.AddBucketFile("scans/", name, ext, lastModified,true);
               continue;
             }
@@ -284,16 +243,11 @@ public partial class ArtworkHTML
               {
                 // should check if in correct (expected) location in bucket, but for now just set the state
                 artList.AddBucketFile(dir, name, ext, lastModified);
-                JPGBucketFiles++;
               }
-      //        JPGBucketFiles++;
               continue;
             }
             else
             {
-
-//              Console.WriteLine($"dir: {dir}, filename: {filename}, name: {name}, ext: {ext}");
-
               if (ext == "pdf")
               {
                 skippedBucketFiles++;
@@ -307,7 +261,6 @@ public partial class ArtworkHTML
                   {
                     // should really check if in correct (expected) location in bucket, but for now just set the state
                     artList.AddBucketFile(dir, name, ext, lastModified);
-                    JPGBucketFiles++;
                   }
                   else
                   {
@@ -320,7 +273,6 @@ public partial class ArtworkHTML
                   scanBucketFiles++;
                   break;
                 case "scans/jpg":
-                  scanJPGBucketFiles++;
                   break;
                 case "atch":
                   atchBucketFiles++;
