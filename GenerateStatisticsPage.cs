@@ -37,7 +37,8 @@ public partial class ArtworkHTML
                 MIN(sketch_dt) as earliest_date,
                 MAX(sketch_dt) as latest_date
             FROM sketch
-            WHERE sketch_dt IS NOT NULL and EXTRACT(YEAR FROM sketch_dt) > 1900";
+            WHERE sketch_dt IS NOT NULL and EXTRACT(YEAR FROM sketch_dt) > 1900
+              AND hide IS NOT TRUE";
 
   const string artworkYearSQL = @"
             SELECT
@@ -53,14 +54,13 @@ public partial class ArtworkHTML
             ORDER BY CASE WHEN EXTRACT(YEAR FROM create_dt) = 1900 THEN 9999 ELSE EXTRACT(YEAR FROM create_dt) END ASC";
 
   const string artworkSeriesSQL = @"
-            SELECT
-                COALESCE(NULLIF(TRIM(series), ''), '(no series)') as series_name,
-                COUNT(*) as piece_count,
-                MIN(create_dt) as start_date,
-                MAX(create_dt) as end_date,
-                COUNT(*) FILTER (WHERE sold IS NOT NULL) as sold_count
+           SELECT
+              COALESCE(NULLIF(TRIM(series), ''), '(no series)') as series_name,
+              COUNT(*) as piece_count,
+              MIN(create_dt) FILTER (WHERE EXTRACT(YEAR FROM create_dt) > 1900) as start_date,
+              MAX(create_dt) as end_date,
+              COUNT(*) FILTER (WHERE sold IS NOT NULL) as sold_count
             FROM artwork
-            WHERE create_dt IS NOT NULL AND EXTRACT(YEAR FROM create_dt) > 1900
             GROUP BY COALESCE(NULLIF(TRIM(series), ''), '(no series)')
             ORDER BY CASE WHEN COALESCE(NULLIF(TRIM(series), ''), '(no series)') = '(no series)' THEN 9999 ELSE 0 END ASC, series_name ASC";
 
@@ -69,11 +69,10 @@ public partial class ArtworkHTML
             SELECT
                 COALESCE(NULLIF(TRIM(location), ''), '(no location)') as location_name,
                 COUNT(*) as piece_count,
-                MIN(create_dt) as start_date,
+                MIN(create_dt) FILTER (WHERE EXTRACT(YEAR FROM create_dt) > 1900) as start_date,
                 MAX(create_dt) as end_date,
                 COUNT(*) FILTER (WHERE sold IS NOT NULL) as sold_count
             FROM artwork
-            WHERE create_dt IS NOT NULL AND EXTRACT(YEAR FROM create_dt) > 1900
             GROUP BY COALESCE(NULLIF(TRIM(location), ''), '(no location)')
             ORDER BY CASE WHEN COALESCE(NULLIF(TRIM(location), ''), '(no location)') = '(no location)' THEN 9999 ELSE 0 END ASC, location_name ASC";
 
@@ -84,6 +83,7 @@ public partial class ArtworkHTML
                 MIN(sketch_dt) as start_date,
                 MAX(sketch_dt) as end_date
             FROM sketch
+            WHERE hide IS NOT TRUE
             GROUP BY sketchbook_number
             ORDER BY sketchbook_number ASC";
 
@@ -194,15 +194,16 @@ public partial class ArtworkHTML
     var artworkYearRows = new StringBuilder();
     foreach (var row in artworkYears)
     {
-      string yearDisplay = row.Year == 1900 ? "Unknown" : row.Year.ToString();
+      bool clearDates = row.Year == 1900; // Assuming 1900 is used as a placeholder for unknown years
+      string yearDisplay = clearDates ? "Unknown" : row.Year.ToString();
       string yearSeriesDisplay = row.SeriesCount == 0 ? "" : row.SeriesCount.ToString();
       string yearSoldDisplay = row.Sold == 0 ? "" : row.Sold.ToString();
       artworkYearRows.AppendLine($@"
                 <tr>
                     <td>{yearDisplay}</td>
                     <td>{row.Count}</td>
-                    <td>{row.Start}</td>
-                    <td>{row.End}</td>
+                    <td>{(clearDates ? "" : row.Start)}</td>
+                    <td>{(clearDates ? "" : row.End)}</td>
                     <td>{yearSeriesDisplay}</td>
                     <td>{yearSoldDisplay}</td>
                 </tr>");
@@ -218,7 +219,7 @@ public partial class ArtworkHTML
                     <td>{row.Count}</td>
                     <td>{row.Start}</td>
                     <td>{row.End}</td>
-                    <td>{row.Sold}</td>
+                    <td>{(row.Sold == 0 ? "" : row.Sold.ToString())}</td>
                 </tr>");
     }
 
@@ -232,7 +233,7 @@ public partial class ArtworkHTML
                     <td>{row.Count}</td>
                     <td>{row.Start}</td>
                     <td>{row.End}</td>
-                    <td>{row.Sold}</td>
+                    <td>{(row.Sold == 0 ? "" : row.Sold.ToString())}</td>
                 </tr>");
     }
 
@@ -267,6 +268,7 @@ public partial class ArtworkHTML
         <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
 
         <h2>Artworks</h2>
+        <a href='artworksplus.html' class='nav-button nav-button-sm'>Browse All Artworks</a>
         <div class='stats-grid'>
             <div class='stat-card'>
                 <div class='stat-number'>" + totalArtworks + @"</div>
@@ -321,6 +323,7 @@ public partial class ArtworkHTML
         </details>
 
         <h2>Sketchbooks</h2>
+        <a href='sketchbook1.html' class='nav-button nav-button-sm'>Browse All Sketchbooks</a>
         <div class='stats-grid'>
             <div class='stat-card'>
                 <div class='stat-number'>" + totalSketchbooks + @"</div>
@@ -350,11 +353,6 @@ public partial class ArtworkHTML
             </table>
         </details>
 
-        <div class='navigation'>
-            <a href='artworksplus.html' class='nav-button'>Browse All Artworks</a>
-            <a href='series.html' class='nav-button'>View by Series</a>
-            <a href='locations.html' class='nav-button'>View by Location</a>
-        </div>
     </div>");
     html.AppendLine(GetHtmlFooter());
 
