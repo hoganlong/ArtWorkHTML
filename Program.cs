@@ -18,6 +18,7 @@ class Program
         var airtableBaseId = configuration["Airtable:BaseId"];
         var airtableTableName = configuration["Airtable:TableName"];
         var outputDirectory = configuration["Output:Directory"] ?? "artwork_html";
+        bool staticOnly = false;
 
         // Get PostgreSQL credentials from AWS Secrets Manager
         var secretArn = configuration["PostgreSQL:SecretArn"];
@@ -33,6 +34,7 @@ class Program
         var host = configuration["PostgreSQL:Host"];
         var database = configuration["PostgreSQL:Database"];
         var port = configuration["PostgreSQL:Port"] ?? "5432";
+
 
         var postgresConnectionString = $"Host={host};Port={port};Database={database};Username={dbCredentials.username};Password={dbCredentials.password};SSL Mode=Require;Trust Server Certificate=true";
         Console.WriteLine("✓ Database credentials retrieved successfully\n");
@@ -57,6 +59,12 @@ class Program
             return;
         }
 
+        if (args.Length > 0 && args[0] == "gen-static")
+        {
+            Console.WriteLine("Generating statistic page only... (no database connection required in generation)");
+            staticOnly = true;
+        }
+
         // Default: Generate HTML files
         var fullOutputPath = Path.Combine(Directory.GetCurrentDirectory(), outputDirectory);
         Directory.CreateDirectory(fullOutputPath);
@@ -65,7 +73,10 @@ class Program
         var generator = new ArtworkHTML(postgresConnectionString!, fullOutputPath);
 
         Console.WriteLine("Generating HTML pages...");
-        await generator.GenerateAllPages();
+        if (staticOnly)
+          await generator.GenerateStaticPages();
+        else
+          await generator.GenerateAllPages();
 
         Console.WriteLine($"\n✓ HTML files generated successfully!");
         Console.WriteLine($"✓ Open: {Path.Combine(fullOutputPath, "index.html")}");

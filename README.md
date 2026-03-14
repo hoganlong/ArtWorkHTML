@@ -8,11 +8,12 @@ A .NET 10 console application that generates a static HTML website from artwork 
 - Reads images from AWS S3 bucket (`keithlong-art-photos`, us-east-1)
 - Retrieves database credentials securely from AWS Secrets Manager
 - Generates multiple HTML pages:
-  - `index.html` — Landing/navigation page
+  - `index.html` — Landing/navigation page with centered content layout
   - `statistics.html` — Stats with collapsible details: Artworks section (tabbed By Year / By Series / By Location, each with Sold count) and Sketchbooks section (per-book table with links)
   - `artworksplus.html` — Main gallery with thumbnails, type filter, hover effects
   - `polaroids.html` — Polaroid scan gallery
   - `sketchbook1.html`, `sketchbook2.html`, ... — One page per sketchbook (generated dynamically)
+  - `copyright.html`, `howisitmade.html`, `credits.html`, `help.html`, `feedback.html` — Info pages (linked from footer)
   - `style.css` — Generated stylesheet
 
 ### Gallery Features
@@ -124,9 +125,16 @@ Bucket: `keithlong-art-photos` (us-east-1)
 ```
 ArtWorkHTML/
 ├── Program.cs                  — Entry point, AWS Secrets Manager, test commands
-├── ArtworkHTML.cs              — Core HTML generation (partial class)
+├── ArtworkHTML.cs              — Core helpers, header/footer, GenerateAllPages (partial class)
+├── GenerateIndexPage.cs        — Landing page generation (partial class)
+├── GenerateStylesheet.cs       — CSS stylesheet generation (partial class)
 ├── GenerateArtworkPages.cs     — Gallery page generation (partial class)
 ├── GenerateStatisticsPage.cs   — Statistics page generation (partial class)
+├── GenerateCopyrightPage.cs    — copyright.html (partial class)
+├── GenerateHowIsMadePage.cs    — howisitmade.html (partial class)
+├── GenerateCreditsPage.cs      — credits.html (partial class)
+├── GenerateHelpPage.cs         — help.html (partial class)
+├── GenerateFeedbackPage.cs     — feedback.html (partial class)
 ├── ArtList.cs                  — ArtList collection + Artwork model + enums
 ├── appsettings.json            — Configuration
 ├── ArtWorkHTML.csproj          — Project file
