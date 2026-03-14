@@ -71,9 +71,9 @@ public partial class ArtworkHTML
 
     const string sketchSQL = @"
        SELECT s.airtable_id, s.sketch_dt, s.description, s.sketch_loc, s.sketch_people,
-              s.sketch_medium, s.sketchbook_number, s.page_number, s.artwork_id, s.filename, s.pub_notes
+              s.sketch_medium, s.sketchbook_number, s.page_number, s.artwork_id, s.filename, s.pub_notes,
+              s.hide
        FROM sketch s
-       WHERE s.hide IS NOT TRUE
        ORDER BY s.sketchbook_number ASC, s.page_number ASC";
 
   private async Task GenerateArtworkPages()
@@ -141,8 +141,9 @@ public partial class ArtworkHTML
       string pubNotes = sketchreader.IsDBNull(10) ? "" : sketchreader.GetString(10);
 
       Artwork sketch = new(airtable_id, ctDate, location, people, medium, sketchbookNumber, pageNumber, artworkID, pubNotes, filename);
+      sketch.hide = !sketchreader.IsDBNull(11) && sketchreader.GetBoolean(11);
 
-      sketchBookList.AddArtwork(sketch);  
+      sketchBookList.AddArtwork(sketch);
     } // while reader.ReadAsync()
     sketchreader.Close();
     sketchcmd.Dispose();  
@@ -573,10 +574,10 @@ public partial class ArtworkHTML
 
     #region sketchbook list pages
     var lastSketchbookNumber = -1; 
-    List<int> sketchbookNumbers = sketchBookList.artworks.Values.Where(e => e.myType.HasFlag(ArtType.Sketch)).Select(a => a.sketchbookNumber).Distinct().OrderBy(n => n).ToList();
+    List<int> sketchbookNumbers = sketchBookList.artworks.Values.Where(e => e.myType.HasFlag(ArtType.Sketch) && !e.hide).Select(a => a.sketchbookNumber).Distinct().OrderBy(n => n).ToList();
 
      // Now generate the HTML page for each sketchbook list
-    foreach (var sketchBookEntry in sketchBookList.artworks.Where(e => e.Value.myType.HasFlag(ArtType.Sketch)).OrderBy(e => e.Value.sketchbookNumber).ThenBy(e => e.Value.pageNumber)) 
+    foreach (var sketchBookEntry in sketchBookList.artworks.Where(e => e.Value.myType.HasFlag(ArtType.Sketch) && !e.Value.hide).OrderBy(e => e.Value.sketchbookNumber).ThenBy(e => e.Value.pageNumber))
     {
       int bookNumber = sketchBookEntry.Value.sketchbookNumber;
 

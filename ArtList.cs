@@ -167,7 +167,8 @@ namespace ArtWorkHTML
     public string[]? backFileName = null;
     public string[]? frontFileName = null;
 
-    public StatesType states=StatesType.NoImage; 
+    public StatesType states=StatesType.NoImage;
+    public bool hide = false;
 
     // Direved utility elements
     public string tifURL = new("");
