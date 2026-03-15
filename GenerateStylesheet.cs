@@ -166,6 +166,15 @@ h1 {
     background: #f9fbfd;
 }
 
+.std-table {
+  border-collapse: collapse;
+}
+.std-table th, .std-table td {
+  border: 1px solid black;
+  padding: 4px 5px;
+}
+
+
 .navigation {
     display: flex;
     gap: 15px;

@@ -42,13 +42,13 @@ public partial class ArtworkHTML
       <p>The pictures of the artworks were taken by a professional photographer and color processed by him then uploaded to web cloud storage using file names stored in the DB.  (This allowed the HTML generator to reference them in the page generation.)   In a similar way the scans were performed by professional scanners and stored on the web cloud storage.  The scanners provided a metadata record for each scan containing: the filename, sketchbook number, page number, date (when readable via OCR), and a notes field — used so far to flag pages that were attachments taped into the book rather than bound pages. This metadata was uploaded to the database and is what allows the HTML generator to correctly organize and display the sketchbook pages.</p>
 
       <h3>Additional details and tools</h3>
-      <table>
-      <tr><td>Cloud Storage (images)...</td><td>AWS S3</td></tr>
-      <tr><td>Cloud Storage (website)...</td><td>AWS S3->Cloud Front</td></tr>
-      <tr><td>SQL DB Hosting...</td><td>Amazon Aurora/RDS</td></tr>
-      <tr><td>Version Control...</td><td>GitHub</td></tr>
-      <tr><td>Code generation ""AI""...</td><td>Claude Code (~v4.6)</td></tr>
-      <tr><td>Languages used...</td><td>C#, HTML, JavaScript, <small>(unknown AirTable script)</small></td></tr>
+      <table class='std-table'>
+        <tr><td>Cloud Storage (images)...</td><td>AWS S3</td></tr>
+        <tr><td>Cloud Storage (website)...</td><td>AWS S3->Cloud Front</td></tr>
+        <tr><td>SQL DB Hosting...</td><td>Amazon Aurora/RDS</td></tr>
+        <tr><td>Version Control...</td><td>GitHub</td></tr>
+        <tr><td>Code generation ""AI""...</td><td>Claude Code (~v4.6)</td></tr>
+        <tr><td>Languages used...</td><td>C#, HTML, JavaScript, <small>(unknown AirTable script)</small></td></tr>
       </table>
       </div>
     </div>");
