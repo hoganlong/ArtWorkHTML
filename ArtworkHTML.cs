@@ -88,6 +88,7 @@ public partial class ArtworkHTML
     await GenerateCreditsPage();
     await GenerateHelpPage();
     await GenerateFeedbackPage();
+    await GenerateOpensourcePage();
     await GenerateStylesheet();
 
     Console.WriteLine("  ✓ index.html - Landing page");
@@ -96,6 +97,7 @@ public partial class ArtworkHTML
     Console.WriteLine("  ✓ credits.html");
     Console.WriteLine("  ✓ help.html");
     Console.WriteLine("  ✓ feedback.html");
+    Console.WriteLine("  ✓ opensource.html");
     Console.WriteLine("  ✓ style.css - Stylesheet");
   }
 
@@ -109,6 +111,7 @@ public partial class ArtworkHTML
     await GenerateCreditsPage();
     await GenerateHelpPage();
     await GenerateFeedbackPage();
+    await GenerateOpensourcePage();
     await GenerateStylesheet();
 
     Console.WriteLine("  ✓ index.html - Landing page");
@@ -119,6 +122,7 @@ public partial class ArtworkHTML
     Console.WriteLine("  ✓ credits.html");
     Console.WriteLine("  ✓ help.html");
     Console.WriteLine("  ✓ feedback.html");
+    Console.WriteLine("  ✓ opensource.html");
     Console.WriteLine("  ✓ style.css - Stylesheet");
   }
 
@@ -151,6 +155,7 @@ public partial class ArtworkHTML
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>{EscapeHtml(title)}</title>
+    <link rel='icon' type='image/png' href='/favicon.png'>
     <link rel='stylesheet' href='style.css'>
 </head>
 <body>
@@ -171,6 +176,7 @@ public partial class ArtworkHTML
             <a href='credits.html'>Credits &amp; thanks</a>
             <a href='help.html'>Help</a>
             <a href='feedback.html'>Feedback</a>
+            <a href='opensource.html'>Opensource</a>
         </nav>
         <p>Keith Long Archive | Generated {DateTime.Now:MMMM d, yyyy' at 'h:mm tt}</p>
     </footer>

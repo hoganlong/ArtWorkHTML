@@ -27,17 +27,10 @@ class Program
             throw new Exception("PostgreSQL:SecretArn not configured in appsettings.json");
         }
 
-        Console.WriteLine("Retrieving database credentials from AWS Secrets Manager...");
-        var dbCredentials = await GetDatabaseCredentialsFromSecretsManager(secretArn);
-
         // Build connection string with retrieved credentials
         var host = configuration["PostgreSQL:Host"];
         var database = configuration["PostgreSQL:Database"];
         var port = configuration["PostgreSQL:Port"] ?? "5432";
-
-
-        var postgresConnectionString = $"Host={host};Port={port};Database={database};Username={dbCredentials.username};Password={dbCredentials.password};SSL Mode=Require;Trust Server Certificate=true";
-        Console.WriteLine("✓ Database credentials retrieved successfully\n");
 
         Console.WriteLine("╔════════════════════════════════════════════════════════════╗");
         Console.WriteLine("║       Keith Long Archive - Artwork HTML Generation         ║");
@@ -45,6 +38,25 @@ class Program
         Console.WriteLine();
 
         // Check command line arguments
+        if (args.Length > 0 && args[0] == "gen-static")
+        {
+            Console.WriteLine("Generating statistic page only... (no database connection required in generation)");
+            staticOnly = true;
+        }
+
+        (string username, string password) dbCredentials=("","");
+
+        if (staticOnly)
+           Console.WriteLine("Static only, don't need credentials from AWS Secrets Manager...");
+        else
+        {
+          Console.WriteLine("Retrieving database credentials from AWS Secrets Manager...");
+          dbCredentials = await GetDatabaseCredentialsFromSecretsManager(secretArn);
+          Console.WriteLine("✓ Database credentials retrieved successfully\n");
+        }
+        var postgresConnectionString = $"Host={host};Port={port};Database={database};Username={dbCredentials.username};Password={dbCredentials.password};SSL Mode=Require;Trust Server Certificate=true";
+
+
         if (args.Length > 0 && args[0] == "test-airtable")
         {
             Console.WriteLine("Testing Airtable connection...");
@@ -57,12 +69,6 @@ class Program
             Console.WriteLine("Testing PostgreSQL connection...");
             await TestDatabaseConnection(postgresConnectionString!);
             return;
-        }
-
-        if (args.Length > 0 && args[0] == "gen-static")
-        {
-            Console.WriteLine("Generating statistic page only... (no database connection required in generation)");
-            staticOnly = true;
         }
 
         // Default: Generate HTML files

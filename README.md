@@ -13,7 +13,7 @@ A .NET 10 console application that generates a static HTML website from artwork 
   - `artworksplus.html` — Main gallery with thumbnails, type filter, hover effects
   - `polaroids.html` — Polaroid scan gallery
   - `sketchbook1.html`, `sketchbook2.html`, ... — One page per sketchbook (generated dynamically)
-  - `copyright.html`, `howisitmade.html`, `credits.html`, `help.html`, `feedback.html` — Info pages (linked from footer)
+  - `copyright.html`, `howisitmade.html`, `credits.html`, `help.html`, `feedback.html`, `opensource.html` — Info pages (linked from footer)
   - `style.css` — Generated stylesheet
 
 ### Gallery Features
@@ -135,6 +135,7 @@ ArtWorkHTML/
 ├── GenerateCreditsPage.cs      — credits.html (partial class)
 ├── GenerateHelpPage.cs         — help.html (partial class)
 ├── GenerateFeedbackPage.cs     — feedback.html (partial class)
+├── GenerateOpensourcePage.cs   — opensource.html (partial class)
 ├── ArtList.cs                  — ArtList collection + Artwork model + enums
 ├── appsettings.json            — Configuration
 ├── ArtWorkHTML.csproj          — Project file

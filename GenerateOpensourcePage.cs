@@ -4,23 +4,22 @@ namespace ArtWorkHTML;
 
 public partial class ArtworkHTML
 {
-  private async Task GenerateHelpPage()
+  private async Task GenerateOpensourcePage()
   {
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader("Help — Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Open Source — Keith Long Archive"));
     html.AppendLine(@"
     <div class='landing-header'>
       <h1>Keith Long Archive</h1>
-      <p class='subtitle'>Help</p>
+      <p class='subtitle'>Open Source</p>
     </div>
     <div class='landing-header'>
         <p class='subtitle'><a href='index.html'>← Back to Archive</a></p>
         <div class='landing-content'>
             <p>Content coming soon.</p>
-            <p>Please help yourself.</p>
         </div>
     </div>");
     html.AppendLine(GetHtmlFooter());
-    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "help.html"), html.ToString());
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "opensource.html"), html.ToString());
   }
 }
