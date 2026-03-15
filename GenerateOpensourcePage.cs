@@ -16,10 +16,15 @@ public partial class ArtworkHTML
     <div class='landing-header'>
         <p class='subtitle'><a href='index.html'>← Back to Archive</a></p>
         <div class='landing-content'>
-            <p>The source code for this website will be made open source eventually.  I haven't done it all yet.  But I did one program you can find the details below.</p>
-            <p>If you want access to the others before I'm ready just let me know and we will work it out.</p>
+            <p>The source code for this website will be made open source eventually.  I have started on the documentation and you can 
+            find that project (that describes how to create a website like this) here:
+            <a href='https://github.com/hoganlong/ArchiveSystem'>Archive System on GitHub</a>
+            You will see it references projects that are not public yet, but will be soon.  You can see details of all the projects needed below.
+            Following me on GitHub or social media will be the easest way to find out about updates.
+            </p>
             <table class='std-table'>
             <tr><th>System</th><th>Code Location</th></tr>
+            <tr><td>Documentation of system</td><td><a href='https://github.com/hoganlong/ArchiveSystem'>Github</a></td></tr>
             <tr><td>Generate Airtable Schema</td><td><a href='https://github.com/hoganlong/AirtableSchemaReader'>Github</a></td></tr>
             <tr><td>ETL Airtable->PostgreSQL</td><td>TBD</td></tr>
             <tr><td>Airtable image reader</td><td>TBD</td></tr>
