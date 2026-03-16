@@ -542,7 +542,7 @@ public partial class ArtworkHTML
       html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)'/></a><br/>
         <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
 
-      html.AppendLine($@"<div class='gallery-item'>");
+      html.AppendLine($"<div>");
       html.AppendLine($"  <div class='desc'>");
       html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.ctDate.ToShortDateString(), "  ")}");
