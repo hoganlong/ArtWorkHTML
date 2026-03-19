@@ -9,18 +9,42 @@ A .NET 10 console application that generates a static HTML website from artwork 
 - Retrieves database credentials securely from AWS Secrets Manager
 - Generates multiple HTML pages:
   - `index.html` — Landing/navigation page with centered content layout
-  - `statistics.html` — Stats with collapsible details: Artworks section (tabbed By Year / By Series / By Location, each with Sold count) and Sketchbooks section (per-book table with links)
-  - `artworksplus.html` — Main gallery with thumbnails, type filter, hover effects
+  - `statistics.html` — Stats with collapsible details: Artworks section (tabbed By Year / By Series / By Location, each with browse buttons) and Sketchbooks section (per-book table with links)
+  - `artwork.html` — Main gallery with thumbnails, type filter, hover effects, tag-driven visibility
   - `polaroids.html` — Polaroid scan gallery
-  - `sketchbook1.html`, `sketchbook2.html`, ... — One page per sketchbook (generated dynamically)
+  - `sketchbooks.html` — Sketchbook index with intro text and a button for each sketchbook
+  - `sketchbooks/sketchbook1.html`, `sketchbooks/sketchbook2.html`, ... — One page per sketchbook (generated dynamically into `sketchbooks/` subfolder)
   - `copyright.html`, `howisitmade.html`, `credits.html`, `help.html`, `feedback.html`, `opensource.html` — Info pages (linked from footer)
   - `style.css` — Generated stylesheet
 
 ### Gallery Features
-- **Type filter** — Filter artworks by type code (All checkbox + per-type checkboxes, built dynamically)
+- **TAGS system** — Gallery items hidden by default; shown when their tags match active tags (see URL Parameters below)
+- **Type filter** — Filter artworks by type (All checkbox + per-type checkboxes, built dynamically from `<my-tags>` first tag)
+- **Series button** — Each artwork with a series shows a small ꜱ button; clicking it filters to show only that series
 - **Thumbnail preview** — Hover over a thumbnail button to see a larger preview popup
 - **Image zoom** — Hover over a gallery image to zoom in (2x, anchored to bottom)
 - **Keyboard shortcuts** — `z` image zoom toggle, `p` thumbnail preview toggle, `t` scroll to top
+
+### URL Parameters (gallery pages)
+| Parameter | Example | Effect |
+|-----------|---------|--------|
+| `show=x` | `?show=all` | Filter by tag; `all` shows everything |
+| `tagtitle=x` | `?tagtitle=1982` | Filter by tag AND show large title banner + update page h1 |
+| `tag=x` | `?tag=Drawing` | Filter by tag |
+| `key=true` | `?Drawing=true` | Filter by tag (key name used as tag) |
+| `#anchor` | `#chapeau` | Filter by tag |
+| `back=url` | `&back=statistics.html` | Override back-link href |
+| `backlabel=text` | `&backlabel=Return+to+Statistics` | Override back-link text |
+
+Multiple tags: comma-separated (`?show=1982,Drawing`). Special tag `ALL` shows everything.
+Tags are case-insensitive. Tags cookie `TAGS=a,b,c` also supported.
+
+### Tag Data Per Gallery Item (artwork.html)
+Each artwork gallery item contains:
+- `<my-tags>` — **Visible** comma-separated tags: `{TypeTag},{Year},{HumanId}` (e.g. `Drawing,1982,KLA-042`)
+- `<my-hidden-tags>` — **Hidden** comma-separated tags: `{SeriesTag},{LocationTag}` (spaces→`-`, commas stripped via `MakeTag()`)
+
+**Known issue**: Type filter checkboxes assume the type tag is always the first value in `<my-tags>`. If tag order changes, checkboxes break. Future fix: use a dedicated element or data attribute for type.
 
 ## Prerequisites
 
@@ -125,7 +149,8 @@ Bucket: `keithlong-art-photos` (us-east-1)
 ```
 ArtWorkHTML/
 ├── Program.cs                  — Entry point, AWS Secrets Manager, test commands
-├── ArtworkHTML.cs              — Core helpers, header/footer, GenerateAllPages (partial class)
+├── ArtworkHTML.cs              — Core helpers: GetHtmlHeader/Footer, GetTagsScript, GetTypeTag,
+│                                 MakeTag, TypeDescriptions, TypeTags (partial class)
 ├── GenerateIndexPage.cs        — Landing page generation (partial class)
 ├── GenerateStylesheet.cs       — CSS stylesheet generation (partial class)
 ├── GenerateArtworkPages.cs     — Gallery page generation (partial class)
@@ -141,6 +166,17 @@ ArtWorkHTML/
 ├── ArtWorkHTML.csproj          — Project file
 └── README.md                   — This file
 ```
+
+## Key Helper Methods (ArtworkHTML.cs)
+
+| Method | Purpose |
+|--------|---------|
+| `GetHtmlHeader(title, pathPrefix)` | HTML `<head>` + site notice; pass `"../"` for subdir pages |
+| `GetHtmlFooter(pathPrefix)` | Footer nav + closing tags |
+| `GetTagsScript()` | JS IIFE injected into gallery pages; handles all tag sources, back-nav, tagtitle banner, page title, `window._tagState`, `window._filterToTag()` |
+| `GetTypeDescription(typeCode)` | Human-readable type name from `TypeDescriptions` dict |
+| `GetTypeTag(typeCode)` | Hyphenated tag name from `TypeTags` dict (e.g. `"Wall-Hanging-Sculpture"`) |
+| `MakeTag(s)` | Sanitizes a string for use as a tag: spaces→`-`, strips `,'"`, trims `-` |
 
 ## Dependencies
 

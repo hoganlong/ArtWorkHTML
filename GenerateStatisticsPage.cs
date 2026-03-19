@@ -198,6 +198,7 @@ public partial class ArtworkHTML
       string yearDisplay = clearDates ? "Unknown" : row.Year.ToString();
       string yearSeriesDisplay = row.SeriesCount == 0 ? "" : row.SeriesCount.ToString();
       string yearSoldDisplay = row.Sold == 0 ? "" : row.Sold.ToString();
+      string yearBrowse = clearDates ? "" : $"<a href='artwork.html?tagtitle={row.Year}&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>browse</a>";
       artworkYearRows.AppendLine($@"
                 <tr>
                     <td>{yearDisplay}</td>
@@ -206,6 +207,7 @@ public partial class ArtworkHTML
                     <td>{(clearDates ? "" : row.End)}</td>
                     <td>{yearSeriesDisplay}</td>
                     <td>{yearSoldDisplay}</td>
+                    <td>{yearBrowse}</td>
                 </tr>");
     }
 
@@ -213,6 +215,8 @@ public partial class ArtworkHTML
     var artworkSeriesRows = new StringBuilder();
     foreach (var row in artworkSeries)
     {
+      var seriesBrowseTag = row.Name == "(no series)" ? "" : MakeTag(row.Name);
+      var seriesBrowse = string.IsNullOrEmpty(seriesBrowseTag) ? "" : $"<a href='artwork.html?tagtitle={seriesBrowseTag}&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>browse</a>";
       artworkSeriesRows.AppendLine($@"
                 <tr>
                     <td>{row.Name}</td>
@@ -220,6 +224,7 @@ public partial class ArtworkHTML
                     <td>{row.Start}</td>
                     <td>{row.End}</td>
                     <td>{(row.Sold == 0 ? "" : row.Sold.ToString())}</td>
+                    <td>{seriesBrowse}</td>
                 </tr>");
     }
 
@@ -227,6 +232,8 @@ public partial class ArtworkHTML
     var artworkLocationRows = new StringBuilder();
     foreach (var row in artworkLocations)
     {
+      var locationBrowseTag = row.Name == "(no location)" ? "" : MakeTag(row.Name);
+      var locationBrowse = string.IsNullOrEmpty(locationBrowseTag) ? "" : $"<a href='artwork.html?tagtitle={locationBrowseTag}&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>browse</a>";
       artworkLocationRows.AppendLine($@"
                 <tr>
                     <td>{row.Name}</td>
@@ -234,6 +241,7 @@ public partial class ArtworkHTML
                     <td>{row.Start}</td>
                     <td>{row.End}</td>
                     <td>{(row.Sold == 0 ? "" : row.Sold.ToString())}</td>
+                    <td>{locationBrowse}</td>
                 </tr>");
     }
 
@@ -243,7 +251,7 @@ public partial class ArtworkHTML
     {
       sketchbookRows.AppendLine($@"
                 <tr>
-                    <td><a href='sketchbook{row.Number}.html'>Sketchbook {row.Number}</a></td>
+                    <td><a href='sketchbooks/sketchbook{row.Number}.html'>Sketchbook {row.Number}</a></td>
                     <td>{row.Pages}</td>
                     <td>{row.Start}</td>
                     <td>{row.End}</td>
@@ -268,7 +276,7 @@ public partial class ArtworkHTML
         <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
 
         <h2>Artworks</h2>
-        <a href='artworksplus.html' class='nav-button nav-button-sm'>Browse All Artworks</a>
+        <a href='artwork.html?show=all' class='nav-button nav-button-sm'>Browse All Artworks</a>
         <div class='stats-grid'>
             <div class='stat-card'>
                 <div class='stat-number'>" + totalArtworks + @"</div>
@@ -298,7 +306,7 @@ public partial class ArtworkHTML
                 <div id='aw-year' class='stats-view'>
                     <table class='stats-table'>
                         <thead><tr>
-                            <th>Year</th><th>Pieces</th><th>Start Date</th><th>End Date</th><th>Named Series</th><th>Sold</th>
+                            <th>Year</th><th>Pieces</th><th>Start Date</th><th>End Date</th><th>Named Series</th><th>Sold</th><th></th>
                         </tr></thead>
                         <tbody>" + artworkYearRows + @"</tbody>
                     </table>
@@ -306,7 +314,7 @@ public partial class ArtworkHTML
                 <div id='aw-series' class='stats-view' style='display:none'>
                     <table class='stats-table'>
                         <thead><tr>
-                            <th>Series</th><th>Count</th><th>Start Date</th><th>End Date</th><th>Sold</th>
+                            <th>Series</th><th>Count</th><th>Start Date</th><th>End Date</th><th>Sold</th><th></th>
                         </tr></thead>
                         <tbody>" + artworkSeriesRows + @"</tbody>
                     </table>
@@ -314,7 +322,7 @@ public partial class ArtworkHTML
                 <div id='aw-location' class='stats-view' style='display:none'>
                     <table class='stats-table'>
                         <thead><tr>
-                            <th>Location</th><th>Count</th><th>Start Date</th><th>End Date</th><th>Sold</th>
+                            <th>Location</th><th>Count</th><th>Start Date</th><th>End Date</th><th>Sold</th><th></th>
                         </tr></thead>
                         <tbody>" + artworkLocationRows + @"</tbody>
                     </table>
@@ -323,7 +331,7 @@ public partial class ArtworkHTML
         </details>
 
         <h2>Sketchbooks</h2>
-        <a href='sketchbook1.html' class='nav-button nav-button-sm'>Browse All Sketchbooks</a>
+        <a href='sketchbooks.html' class='nav-button nav-button-sm'>Browse All Sketchbooks</a>
         <div class='stats-grid'>
             <div class='stat-card'>
                 <div class='stat-number'>" + totalSketchbooks + @"</div>

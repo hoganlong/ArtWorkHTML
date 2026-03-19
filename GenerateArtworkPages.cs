@@ -314,8 +314,8 @@ public partial class ArtworkHTML
 
     html.AppendLine(@"
     <div class='container'>
-        <h1>All Artworks</h1>
-        <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
+        <h1 id='page-title'>All Artworks</h1>
+        <p class='subtitle'><a id='back-link' href='index.html'>← Back to Home</a></p>
     </div>
     <div class='page-controls'>
         <div class='page-controls-row'>
@@ -327,15 +327,17 @@ public partial class ArtworkHTML
             <span class='page-controls-label'>Show types:</span>
             <span id='type-filter-checkboxes'></span>
         </div>
-    </div>
-    <script>
+    </div>");
+    html.AppendLine($"<script>{GetTagsScript()}</script>");
+    html.AppendLine(@"<script>
     document.addEventListener('DOMContentLoaded', function() {
         var items = document.querySelectorAll('.gallery-item');
-        var types = {};
+        var typeSet = new Set();
         items.forEach(function(el) {
-            var code = el.getAttribute('data-typecode') || '(none)';
-            var desc = el.getAttribute('data-typedesc') || code;
-            if (!types[code]) types[code] = desc;
+            var tagsEl = el.querySelector('my-tags');
+            if(!tagsEl) return;
+            var firstTag = tagsEl.textContent.split(',')[0].trim();
+            if(firstTag) typeSet.add(firstTag);
         });
         var container = document.getElementById('type-filter-checkboxes');
         if (!container) return;
@@ -355,15 +357,15 @@ public partial class ArtworkHTML
         allLabel.appendChild(document.createTextNode(' All'));
         container.appendChild(allLabel);
 
-        Object.keys(types).sort().forEach(function(code) {
+        Array.from(typeSet).sort().forEach(function(tag) {
             var label = document.createElement('label');
             var cb = document.createElement('input');
             cb.type = 'checkbox';
             cb.checked = true;
-            cb.dataset.filterType = code;
+            cb.dataset.filterType = tag;
             cb.addEventListener('change', filterGallery);
             label.appendChild(cb);
-            label.appendChild(document.createTextNode(' ' + types[code]));
+            label.appendChild(document.createTextNode(' ' + tag));
             container.appendChild(label);
         });
         function filterGallery() {
@@ -372,9 +374,26 @@ public partial class ArtworkHTML
                 if (!cb.checked) hidden.add(cb.dataset.filterType);
             });
             items.forEach(function(el) {
-                var t = el.getAttribute('data-typecode') || '(none)';
-                el.style.display = hidden.has(t) ? 'none' : '';
+                var tagsEl = el.querySelector('my-tags');
+                var firstType = tagsEl ? tagsEl.textContent.split(',')[0].trim() : '';
+                el.style.display = (firstType && hidden.has(firstType)) ? 'none' : '';
             });
+        }
+        // Sync checkboxes with active tags from URL/anchor/cookie
+        var tagState = window._tagState;
+        if (tagState && !tagState.hasAll && tagState.activeTags.size > 0) {
+            var typeCbs = Array.from(container.querySelectorAll('input[data-filter-type]'));
+            var hasActiveTypeTag = typeCbs.some(function(cb) { return tagState.activeTags.has(cb.dataset.filterType.toLowerCase()); });
+            if (hasActiveTypeTag) {
+                allCb.checked = false;
+                typeCbs.forEach(function(cb) {
+                    cb.checked = tagState.activeTags.has(cb.dataset.filterType.toLowerCase());
+                });
+                filterGallery();
+            } else {
+                // Non-type tags active (e.g. year) — uncheck All to signal filtered view, leave type boxes checked
+                allCb.checked = false;
+            }
         }
     });
     </script>
@@ -386,6 +405,7 @@ public partial class ArtworkHTML
         if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
     });
     </script>
+    <div id='tag-title' class='tag-title-banner' style='display:none'></div>
     <div class='container'>");
 
     html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
@@ -400,7 +420,7 @@ public partial class ArtworkHTML
 
 
 */
-      html.AppendLine($@"<div class='gallery-item' data-typecode='{EscapeHtml(art.typeCode)}' data-typedesc='{EscapeHtml(GetTypeDescription(art.typeCode))}'>");
+      html.AppendLine($@"<div class='gallery-item'>");
       if ((art.states & StatesType.NoImage) == 0) // if we have an image
       {
         html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'>
@@ -484,9 +504,17 @@ public partial class ArtworkHTML
       html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: ")}");
       html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
-      html.AppendLine($"    {BlankOrWithBR(art.humanId, "  ")}");
-      html.AppendLine($"    {BlankOrWithBR(GetTypeDescription(art.typeCode), "  Type: ")}");
       html.AppendLine($"  </div>");
+      var artTags = string.Join(",", new[] { GetTypeTag(art.typeCode), art.ctDate == DateTime.MinValue ? "" : art.ctDate.Year.ToString(), art.humanId }.Where(t => !string.IsNullOrEmpty(t)));
+      var seriesTag = MakeTag(art.series);
+      var seriesBtn = string.IsNullOrEmpty(seriesTag) ? "" : $" <button class='series-tag-btn' onclick='window._filterToTag(\"{EscapeHtml(seriesTag)}\")' title='Show whole series'>&#x1D42C;</button>";
+      html.AppendLine($"  <div class='desc'>Tags: <my-tags>{EscapeHtml(artTags)}</my-tags>{seriesBtn}</div>");
+      var hiddenTags = string.Join(",", new[] {
+        seriesTag,
+        MakeTag(art.location)
+      }.Where(t => !string.IsNullOrEmpty(t)));
+      if (!string.IsNullOrEmpty(hiddenTags))
+        html.AppendLine($"  <my-hidden-tags>{EscapeHtml(hiddenTags)}</my-hidden-tags>");
 
       html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>", art.errors)}</div>");
 
@@ -504,7 +532,7 @@ public partial class ArtworkHTML
     html.AppendLine(@"</div>");
     html.AppendLine(GetHtmlFooter());
 
-    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "artworksplus.html"), html.ToString());
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "artwork.html"), html.ToString());
 
     #endregion
 
@@ -517,13 +545,14 @@ public partial class ArtworkHTML
     html.AppendLine(@"
     <div class='container'>
         <h1>Polaroids</h1>
-        <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
+        <p class='subtitle'><a id='back-link' href='index.html'>← Back to Home</a></p>
     </div>
     <div class='page-controls'>
         <span class='page-controls-label'>Hover effects:</span>
         <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom (z)</label>
-    </div>
-    <script>
+    </div>");
+    html.AppendLine($"<script>{GetTagsScript()}</script>");
+    html.AppendLine(@"<script>
     document.addEventListener('keydown', function(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
@@ -531,6 +560,7 @@ public partial class ArtworkHTML
         if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
     });
     </script>
+    <div id='tag-title' class='tag-title-banner' style='display:none'></div>
     <div class='container'>");
 
     html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
@@ -573,8 +603,12 @@ public partial class ArtworkHTML
     #endregion
 
     #region sketchbook list pages
-    var lastSketchbookNumber = -1; 
+    var lastSketchbookNumber = -1;
     List<int> sketchbookNumbers = sketchBookList.artworks.Values.Where(e => e.myType.HasFlag(ArtType.Sketch) && !e.hide).Select(a => a.sketchbookNumber).Distinct().OrderBy(n => n).ToList();
+
+    // Ensure sketchbooks subdirectory exists
+    var sketchbooksDir = Path.Combine(_outputDirectory, "sketchbooks");
+    Directory.CreateDirectory(sketchbooksDir);
 
      // Now generate the HTML page for each sketchbook list
     foreach (var sketchBookEntry in sketchBookList.artworks.Where(e => e.Value.myType.HasFlag(ArtType.Sketch) && !e.Value.hide).OrderBy(e => e.Value.sketchbookNumber).ThenBy(e => e.Value.pageNumber))
@@ -583,24 +617,24 @@ public partial class ArtworkHTML
 
       if (bookNumber != lastSketchbookNumber)  // We've hit a new sketchbook, so we need to start a new HTML page (but first write out the previous one if this isn't the first sketchbook)
       {
-        if (lastSketchbookNumber != -1) 
+        if (lastSketchbookNumber != -1)
         {
           // If this is not the first sketchbook, we need to write out the previous one before starting a new one
           html.AppendLine(@"</div>"); // close container
-          html.AppendLine(GetHtmlFooter());
-          await File.WriteAllTextAsync(Path.Combine(_outputDirectory, $"sketchbook{lastSketchbookNumber}.html"), html.ToString());
-          Console.WriteLine($"  ✓ sketchbook{lastSketchbookNumber}.html");
+          html.AppendLine(GetHtmlFooter("../"));
+          await File.WriteAllTextAsync(Path.Combine(sketchbooksDir, $"sketchbook{lastSketchbookNumber}.html"), html.ToString());
+          Console.WriteLine($"  ✓ sketchbooks/sketchbook{lastSketchbookNumber}.html");
         }
         lastSketchbookNumber = bookNumber;
         html.Clear();
 
         // Now generate the HTML page for the sketchbook list
-        html.AppendLine(GetHtmlHeader($"Sketchbook {bookNumber} - Keith Long Archive"));
+        html.AppendLine(GetHtmlHeader($"Sketchbook {bookNumber} - Keith Long Archive", "../"));
 
         html.AppendLine(@"
         <div class='container'>
           <h1>Sketchbooks</h1>
-          <p class='subtitle'><a href='index.html'>← Back to Home</a></p>");
+          <p class='subtitle'><a id='back-link' href='../index.html'>← Back to Home</a></p>");
 
         // Add navigation for other sketchbooks if there are multiple
         if (sketchbookNumbers.Count > 1)
@@ -611,7 +645,7 @@ public partial class ArtworkHTML
             if (entry == bookNumber)
               html.AppendLine($"<span class='nav-button sketchbook-nav-button active'>{entry}</span>");
             else
-              html.AppendLine($"<a href='sketchbook{entry}.html' class='nav-button sketchbook-nav-button'>{entry}</a>");
+              html.AppendLine($"<a href='sketchbook{entry}.html?show=all' class='nav-button sketchbook-nav-button'>{entry}</a>");
           }
           html.AppendLine("</div>");
         }
@@ -621,8 +655,9 @@ public partial class ArtworkHTML
         <div class='page-controls'>
             <span class='page-controls-label'>Hover effects:</span>
             <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom (z)</label>
-        </div>
-        <script>
+        </div>");
+        html.AppendLine($"<script>{GetTagsScript()}</script>");
+        html.AppendLine(@"<script>
           document.addEventListener('keydown', function(e) {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
@@ -630,6 +665,7 @@ public partial class ArtworkHTML
             if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
           });
         </script>
+        <div id='tag-title' class='tag-title-banner' style='display:none'></div>
         <div class='container'>");
 
         html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
@@ -669,10 +705,34 @@ public partial class ArtworkHTML
     }
 
     html.AppendLine(@"</div>");
-    html.AppendLine(GetHtmlFooter());
+    html.AppendLine(GetHtmlFooter("../"));
 
-    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, $"sketchbook{lastSketchbookNumber}.html"), html.ToString());
-    Console.WriteLine($"  ✓ sketchbook{lastSketchbookNumber}.html");
+    await File.WriteAllTextAsync(Path.Combine(sketchbooksDir, $"sketchbook{lastSketchbookNumber}.html"), html.ToString());
+    Console.WriteLine($"  ✓ sketchbooks/sketchbook{lastSketchbookNumber}.html");
+
+    // Generate sketchbooks.html index at root
+    html.Clear();
+    html.AppendLine(GetHtmlHeader("Sketchbooks - Keith Long Archive"));
+    html.AppendLine(@"
+    <div class='container landing-page'>
+      <div class='landing-header'>
+        <h1>Sketchbooks</h1>
+        <p class='subtitle'><a id='back-link' href='index.html'>← Back to Home</a></p>
+      </div>
+      <div class='landing-content'>
+        <p>Keith Long kept sketchbooks throughout his career, filling them with drawings, studies,
+           and observations made on location and in the studio. Each book is a record of a period
+           of his life and work. Browse any sketchbook below.</p>
+      </div>
+      <div class='navigation'>");
+    foreach (var n in sketchbookNumbers)
+      html.AppendLine($"<div class='nav-button-wrap'><a href='sketchbooks/sketchbook{n}.html?show=all' class='nav-button'>Sketchbook {n}</a><div class='coming-soon'>&nbsp;</div></div>");
+    html.AppendLine(@"
+      </div>
+    </div>");
+    html.AppendLine(GetHtmlFooter());
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "sketchbooks.html"), html.ToString());
+    Console.WriteLine("  ✓ sketchbooks.html - Sketchbook index");
 
     #endregion  
     
