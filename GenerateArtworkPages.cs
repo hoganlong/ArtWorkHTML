@@ -66,7 +66,6 @@ public partial class ArtworkHTML
         LEFT JOIN imgGroup ai_polaroid ON a.airtable_id = ai_polaroid.artwork_id AND ai_polaroid.lview ='Pola'
         LEFT JOIN dirimgGroup diri_back ON a.airtable_id = diri_back.artwork_id AND diri_back.lview    ='Back'
         LEFT JOIN dirimgGroup diri_front ON a.airtable_id = diri_front.artwork_id AND diri_front.lview ='Fron'
-        WHERE ai_back.ids IS NOT NULL OR ai_front.ids IS NOT NULL OR ai_paper.ids IS NOT NULL OR ai_polaroid.ids IS NOT NULL OR diri_back.dirimgs IS NOT NULL OR diri_front.dirimgs IS NOT NULL
         ORDER BY a.human_readable_id, a.create_dt ASC NULLS last";
 
     const string sketchSQL = @"
@@ -427,6 +426,10 @@ public partial class ArtworkHTML
                    <img src='{art.jpgURL}' title='(click for full size)'/>
                     </a><br/>
                     <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
+      }
+      else
+      {
+        html.AppendLine($"  <div class='desc' style='color:red;'>No photo for artwork</div>");
       }
         // Add thumbnail buttons for additional views
         var thumbnails = new List<(string label, int[]? id)>

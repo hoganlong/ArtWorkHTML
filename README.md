@@ -9,7 +9,7 @@ A .NET 10 console application that generates a static HTML website from artwork 
 - Retrieves database credentials securely from AWS Secrets Manager
 - Generates multiple HTML pages:
   - `index.html` — Landing/navigation page with centered content layout
-  - `statistics.html` — Stats with collapsible details: Artworks section (tabbed By Year / By Series / By Location, each with browse buttons) and Sketchbooks section (per-book table with links)
+  - `statistics.html` — Stats with collapsible details: Artworks section (tabbed By Year / By Series / By Location / By Type, each with browse buttons) and Sketchbooks section (per-book table with links)
   - `artwork.html` — Main gallery with thumbnails, type filter, hover effects, tag-driven visibility
   - `polaroids.html` — Polaroid scan gallery
   - `sketchbooks.html` — Sketchbook index with intro text and a button for each sketchbook

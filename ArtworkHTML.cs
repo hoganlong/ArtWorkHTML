@@ -130,6 +130,15 @@ public partial class ArtworkHTML
     if (tagtitleValues.length > 0) {
       if (banner) { banner.textContent = tagtitleValues.join(' & '); banner.style.display = ''; }
       if (titleEl) titleEl.textContent = 'Artwork - ' + tagtitleValues.join(' & ');
+      var rows = document.querySelectorAll('.page-controls-row');
+      var hoverRow = null;
+      rows.forEach(function(row) {
+        if (row.querySelector('#type-filter-checkboxes')) row.style.display = 'none';
+        if (row.querySelector('#chk-image-hover')) hoverRow = row;
+      });
+      var pageControls = document.querySelector('.page-controls');
+      if (pageControls) pageControls.style.display = 'none';
+      if (hoverRow && banner) banner.insertAdjacentElement('afterend', hoverRow);
     } else if (activeTags.size > 0 && !hasAll) {
       if (titleEl) titleEl.textContent = 'Artwork';
     }

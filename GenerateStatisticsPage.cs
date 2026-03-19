@@ -64,6 +64,17 @@ public partial class ArtworkHTML
             GROUP BY COALESCE(NULLIF(TRIM(series), ''), '(no series)')
             ORDER BY CASE WHEN COALESCE(NULLIF(TRIM(series), ''), '(no series)') = '(no series)' THEN 9999 ELSE 0 END ASC, series_name ASC";
 
+  const string artworkTypeSQL = @"
+            SELECT
+                COALESCE(t.description, '(no type)') as type_desc,
+                COALESCE(t.code, '') as type_code,
+                COUNT(*) as piece_count,
+                COUNT(*) FILTER (WHERE a.sold IS NOT NULL) as sold_count
+            FROM artwork a
+            LEFT JOIN artwork_type t ON a.type_id ->> 0 = t.airtable_id
+            GROUP BY t.description, t.code
+            ORDER BY CASE WHEN t.description IS NULL THEN 9999 ELSE 0 END ASC, t.description ASC";
+
 // does not count date of 1900 TODO
   const string artworkLocationSQL = @"
             SELECT
@@ -176,6 +187,22 @@ public partial class ArtworkHTML
     await locationReader.DisposeAsync();
     await locationCmd.DisposeAsync();
 
+    // Artwork type breakdown
+    var artworkTypes = new List<(string Desc, string Code, int Count, int Sold)>();
+    await using var typeCmd = new NpgsqlCommand(artworkTypeSQL, connection);
+    await using var typeReader = await typeCmd.ExecuteReaderAsync();
+    while (await typeReader.ReadAsync())
+    {
+      artworkTypes.Add((
+        typeReader.IsDBNull(0) ? "(no type)" : typeReader.GetString(0),
+        typeReader.IsDBNull(1) ? "" : typeReader.GetString(1),
+        typeReader.GetInt32(2),
+        typeReader.IsDBNull(3) ? 0 : typeReader.GetInt32(3)
+      ));
+    }
+    await typeReader.DisposeAsync();
+    await typeCmd.DisposeAsync();
+
     // Sketchbook breakdown
     var sketchbookDetails = new List<(int Number, int Pages, string Start, string End)>();
     await using var sbDetailCmd = new NpgsqlCommand(sketchbookDetailSQL, connection);
@@ -245,6 +272,21 @@ public partial class ArtworkHTML
                 </tr>");
     }
 
+    // Build artwork type detail rows
+    var artworkTypeRows = new StringBuilder();
+    foreach (var row in artworkTypes)
+    {
+      var typeBrowseTag = string.IsNullOrEmpty(row.Code) ? "" : GetTypeTag(row.Code);
+      var typeBrowse = string.IsNullOrEmpty(typeBrowseTag) || typeBrowseTag == "none" ? "" : $"<a href='artwork.html?tagtitle={typeBrowseTag}&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>browse</a>";
+      artworkTypeRows.AppendLine($@"
+                <tr>
+                    <td>{EscapeHtml(row.Desc)}</td>
+                    <td>{row.Count}</td>
+                    <td>{(row.Sold == 0 ? "" : row.Sold.ToString())}</td>
+                    <td>{typeBrowse}</td>
+                </tr>");
+    }
+
     // Build sketchbook detail rows
     var sketchbookRows = new StringBuilder();
     foreach (var row in sketchbookDetails)
@@ -302,6 +344,7 @@ public partial class ArtworkHTML
                     <button class='stats-tab active' onclick='showStatsView(this, ""aw-year"")'>By Year</button>
                     <button class='stats-tab' onclick='showStatsView(this, ""aw-series"")'>By Series</button>
                     <button class='stats-tab' onclick='showStatsView(this, ""aw-location"")'>By Location</button>
+                    <button class='stats-tab' onclick='showStatsView(this, ""aw-type"")'>By Type</button>
                 </div>
                 <div id='aw-year' class='stats-view'>
                     <table class='stats-table'>
@@ -325,6 +368,14 @@ public partial class ArtworkHTML
                             <th>Location</th><th>Count</th><th>Start Date</th><th>End Date</th><th>Sold</th><th></th>
                         </tr></thead>
                         <tbody>" + artworkLocationRows + @"</tbody>
+                    </table>
+                </div>
+                <div id='aw-type' class='stats-view' style='display:none'>
+                    <table class='stats-table'>
+                        <thead><tr>
+                            <th>Type</th><th>Count</th><th>Sold</th><th></th>
+                        </tr></thead>
+                        <tbody>" + artworkTypeRows + @"</tbody>
                     </table>
                 </div>
             </div>
