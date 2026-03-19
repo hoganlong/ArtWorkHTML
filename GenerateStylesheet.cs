@@ -337,10 +337,44 @@ footer {
   }
   div.gallery-item
   {
+    display: none;
     margin: 5px;
     border: 1px solid #ccc;
     width: 250px;
     position: relative;
+  }
+  div.gallery-item.tag-active
+  {
+    display: block;
+  }
+  my-hidden-tags
+  {
+    display: none;
+  }
+
+  .series-tag-btn {
+    font-size: 0.7em;
+    padding: 7px 8px;
+    cursor: pointer;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    background: #f0f0f0;
+    vertical-align: super;
+    font-variant: small-caps;
+  }
+  .series-tag-btn:hover {
+    background: #3498db;
+    color: white;
+    border-color: #3498db;
+  }
+
+  .tag-title-banner
+  {
+    text-align: center;
+    font-size: 8em;
+    font-weight: bold;
+    padding: 16px 20px;
+    color: #2c3e50;
   }
   div.gallery-item:hover
   {

@@ -72,6 +72,94 @@ public partial class ArtworkHTML
     if (string.IsNullOrEmpty(typeCode)) return "";
     return TypeDescriptions.TryGetValue(typeCode, out var desc) ? desc : $"Description {typeCode}";
   }
+
+  private static readonly Dictionary<string, string> TypeTags = new(StringComparer.OrdinalIgnoreCase)
+  {
+    {"W", "Wall-Hanging-Sculpture"},
+    {"D", "Drawing"},
+    {"S", "Sculpture-NonWall"},
+    {"C", "Canvas"},
+    {"J", "Jewelry"},
+    {"P", "Painting-NonCanvas"},
+    {"B", "Broach"},
+    {"N", "Necklace"}
+  };
+
+  private string GetTypeTag(string? typeCode)
+  {
+    if (string.IsNullOrEmpty(typeCode)) return "none";
+    return TypeTags.TryGetValue(typeCode, out var tag) ? tag : "none";
+  }
+
+  private static string MakeTag(string? s)
+  {
+    if (string.IsNullOrEmpty(s)) return "";
+    return s.Replace(" ", "-").Replace(",", "").Replace("'", "").Replace("\"", "").Trim('-');
+  }
+
+  private static string GetTagsScript()
+  {
+    return @"(function() {
+  var activeTags = new Set();
+  var params = new URLSearchParams(window.location.search);
+  (params.get('tag') || '').split(',').forEach(function(t) { t=t.trim().toLowerCase(); if(t) activeTags.add(t); });
+  (params.get('show') || '').split(',').forEach(function(t) { t=t.trim().toLowerCase(); if(t) activeTags.add(t); });
+  var tagtitleValues = (params.get('tagtitle') || '').split(',').map(function(t){ return t.trim(); }).filter(function(t){ return t; });
+  tagtitleValues.forEach(function(t) { activeTags.add(t.toLowerCase()); });
+  params.forEach(function(val, key) { if(val.toLowerCase()==='true') activeTags.add(key.toLowerCase()); });
+  var hash = window.location.hash.replace('#','').trim().toLowerCase();
+  if(hash) activeTags.add(hash);
+  var cookieMatch = document.cookie.match(/(?:^|;\s*)TAGS=([^;]*)/);
+  if(cookieMatch) cookieMatch[1].split(',').forEach(function(t){ t=t.trim().toLowerCase(); if(t) activeTags.add(t); });
+  var hasAll = activeTags.has('all');
+  window._tagState = { activeTags: activeTags, hasAll: hasAll };
+  var back = params.get('back');
+  var backlabel = params.get('backlabel');
+  if (back || backlabel) {
+    document.addEventListener('DOMContentLoaded', function() {
+      var link = document.getElementById('back-link');
+      if (link) {
+        if (back) link.href = back;
+        if (backlabel) link.textContent = '\u2190 ' + backlabel;
+      }
+    });
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    var titleEl = document.getElementById('page-title');
+    var banner = document.getElementById('tag-title');
+    if (tagtitleValues.length > 0) {
+      if (banner) { banner.textContent = tagtitleValues.join(' & '); banner.style.display = ''; }
+      if (titleEl) titleEl.textContent = 'Artwork - ' + tagtitleValues.join(' & ');
+    } else if (activeTags.size > 0 && !hasAll) {
+      if (titleEl) titleEl.textContent = 'Artwork';
+    }
+  });
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.gallery-item').forEach(function(item) {
+      if(hasAll) { item.classList.add('tag-active'); return; }
+      var allTagText = Array.from(item.querySelectorAll('my-tags, my-hidden-tags')).map(function(el){ return el.textContent; }).join(',');
+      var itemTags = allTagText.split(',').map(function(t){ return t.trim().toLowerCase(); }).filter(function(t){ return t; });
+      for(var i=0; i<itemTags.length; i++) {
+        if(activeTags.has(itemTags[i])) { item.classList.add('tag-active'); break; }
+      }
+    });
+  });
+  window._filterToTag = function(tag) {
+    tag = tag.toLowerCase();
+    activeTags.clear();
+    activeTags.add(tag);
+    hasAll = false;
+    document.querySelectorAll('.gallery-item').forEach(function(item) {
+      item.classList.remove('tag-active');
+      var allTagText = Array.from(item.querySelectorAll('my-tags, my-hidden-tags')).map(function(el){ return el.textContent; }).join(',');
+      var itemTags = allTagText.split(',').map(function(t){ return t.trim().toLowerCase(); }).filter(function(t){ return t; });
+      for(var i=0; i<itemTags.length; i++) {
+        if(activeTags.has(itemTags[i])) { item.classList.add('tag-active'); break; }
+      }
+    });
+  };
+})();";
+  }
   // -----------------------------------------------------------------------
 
   public ArtworkHTML(string connectionString, string outputDirectory)
@@ -116,7 +204,7 @@ public partial class ArtworkHTML
 
     Console.WriteLine("  ✓ index.html - Landing page");
     Console.WriteLine("  ✓ statistics.html - Archive statistics");
-    Console.WriteLine("  ✓ artworksplus.html - Complete artwork list");
+    Console.WriteLine("  ✓ artwork.html - Complete artwork list");
     Console.WriteLine("  ✓ copyright.html");
     Console.WriteLine("  ✓ howisitmade.html");
     Console.WriteLine("  ✓ credits.html");
@@ -147,7 +235,7 @@ public partial class ArtworkHTML
       return ("");
   }
 
-  private string GetHtmlHeader(string title)
+  private string GetHtmlHeader(string title, string pathPrefix = "")
   {
     return $@"<!DOCTYPE html>
 <html lang='en'>
@@ -156,7 +244,7 @@ public partial class ArtworkHTML
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>{EscapeHtml(title)}</title>
     <link rel='icon' type='image/png' href='/favicon.png'>
-    <link rel='stylesheet' href='style.css'>
+    <link rel='stylesheet' href='{pathPrefix}style.css'>
 </head>
 <body>
 <div class='site-notice'>
@@ -166,17 +254,17 @@ public partial class ArtworkHTML
   ";
   }
 
-  private string GetHtmlFooter()
+  private string GetHtmlFooter(string pathPrefix = "")
   {
     return $@"
     <footer>
         <nav class='footer-nav'>
-            <a href='copyright.html'>Copyright (can I copy?) details</a>
-            <a href='howisitmade.html'>How it is made</a>
-            <a href='credits.html'>Credits &amp; thanks</a>
-            <a href='help.html'>Help</a>
-            <a href='feedback.html'>Feedback</a>
-            <a href='opensource.html'>Opensource</a>
+            <a href='{pathPrefix}copyright.html'>Copyright (can I copy?) details</a>
+            <a href='{pathPrefix}howisitmade.html'>How it is made</a>
+            <a href='{pathPrefix}credits.html'>Credits &amp; thanks</a>
+            <a href='{pathPrefix}help.html'>Help</a>
+            <a href='{pathPrefix}feedback.html'>Feedback</a>
+            <a href='{pathPrefix}opensource.html'>Opensource</a>
         </nav>
         <p>Keith Long Archive | Generated {DateTime.Now:MMMM d, yyyy' at 'h:mm tt}</p>
     </footer>

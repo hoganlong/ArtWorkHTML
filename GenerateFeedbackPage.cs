@@ -16,7 +16,12 @@ public partial class ArtworkHTML
     <div class='landing-header'>
         <p class='subtitle'><a href='index.html'>← Back to Archive</a></p>
         <div class='landing-content'>
-            <p>Content coming soon.</p>
+            <p>If you want to contact us please use the email keithlongarchive AT gmail dot com. <BR>
+            You can also contact Hogan Long on various social media via DM: <BR>
+            <img src='https://archive.keithlong.com/icon/X.png'/><a href='https://x.com/HoganLong'>@hoganlong</a><BR>
+            <img src='https://archive.keithlong.com/icon/instagram.png'/><a href='https://www.instagram.com/hogan.long/'>@hogan.long</a><BR>
+            <img src='https://archive.keithlong.com/icon/facebook.png'/><a href='https://www.facebook.com/HoganLong/'>@hoganlong</a>
+            </p>
         </div>
     </div>");
     html.AppendLine(GetHtmlFooter());
