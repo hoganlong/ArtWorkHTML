@@ -2,6 +2,7 @@
 
 using Microsoft.Extensions.Configuration;
 using Npgsql;
+using System.Reflection;
 using System.Text;
 
 using Amazon.S3;
@@ -50,6 +51,10 @@ public partial class ArtworkHTML
 {
   private readonly string _connectionString;
   private readonly string _outputDirectory;
+  private static readonly string _version =
+    System.Reflection.Assembly.GetExecutingAssembly()
+      .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
+      ?.InformationalVersion.Split('+')[0] ?? "";
 
   // -----------------------------------------------------------------------
   // Type code descriptions — update the values here to replace placeholders
@@ -143,6 +148,12 @@ public partial class ArtworkHTML
       if (titleEl) titleEl.textContent = 'Artwork';
     }
   });
+  function updateSeriesButtons() {
+    document.querySelectorAll('.series-tag-btn').forEach(function(btn) {
+      var tag = (btn.getAttribute('data-series-tag') || '').toLowerCase();
+      btn.style.display = (tag && activeTags.has(tag)) ? 'none' : '';
+    });
+  }
   document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.gallery-item').forEach(function(item) {
       if(hasAll) { item.classList.add('tag-active'); return; }
@@ -152,6 +163,7 @@ public partial class ArtworkHTML
         if(activeTags.has(itemTags[i])) { item.classList.add('tag-active'); break; }
       }
     });
+    updateSeriesButtons();
   });
   window._filterToTag = function(tag) {
     tag = tag.toLowerCase();
@@ -166,6 +178,7 @@ public partial class ArtworkHTML
         if(activeTags.has(itemTags[i])) { item.classList.add('tag-active'); break; }
       }
     });
+    updateSeriesButtons();
   };
 })();";
   }
@@ -234,6 +247,9 @@ public partial class ArtworkHTML
       return ("");
   }
 
+  private static string DateOrEmpty(DateTime dt) =>
+    (dt == DateTime.MinValue || dt.Year == 1900) ? "" : dt.ToShortDateString();
+
   private static string BlankOrWithBR(string inS, string prepend = "")
   {
     if (!string.IsNullOrEmpty(inS))
@@ -275,7 +291,7 @@ public partial class ArtworkHTML
             <a href='{pathPrefix}feedback.html'>Feedback</a>
             <a href='{pathPrefix}opensource.html'>Opensource</a>
         </nav>
-        <p>Keith Long Archive | Generated {DateTime.Now:MMMM d, yyyy' at 'h:mm tt}</p>
+        <p>Keith Long Archive | Generated {DateTime.Now:MMMM d, yyyy' at 'h:mm tt} | v{_version}</p>
     </footer>
 </body>
 </html>";

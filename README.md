@@ -100,6 +100,34 @@ HTML files are generated in the `artwork_html` directory (configurable via `apps
 
 Open `artwork_html/index.html` in a web browser to view the generated website.
 
+## Full Pipeline / Deployment
+
+The full build-and-deploy pipeline is automated by `build-and-deploy.ps1` in the parent directory (`C:\Users\Hogan\Projects\claudetest\`).
+
+### Run the full pipeline
+```powershell
+cd C:\Users\Hogan\Projects\claudetest
+.\build-and-deploy.ps1
+```
+
+### Skip to a specific step
+```powershell
+.\build-and-deploy.ps1 -StartStep 4   # start from HTML generation
+.\build-and-deploy.ps1 -StartStep 5   # start from S3 sync
+```
+
+### Pipeline steps
+| # | Step | Project/Command |
+|---|------|-----------------|
+| 1 | Download new images from Airtable | `AirtableImageDownloader` — `dotnet run` |
+| 2 | Upload new local images to S3 | `checks3vslocal` — `dotnet run` |
+| 3 | ETL: Airtable → PostgreSQL | `AirtableToPostgres` — `dotnet run` |
+| 4 | Generate static HTML site | `ArtWorkHTML` — `dotnet run` |
+| 5 | Sync HTML to website S3 bucket | `aws s3 sync artwork_html/ s3://archive.keithlong.com/ --delete` |
+| 6 | Invalidate CloudFront cache | `aws cloudfront create-invalidation ...` |
+
+Skipped steps are printed in gray so you can see what was bypassed. Any step failure aborts the pipeline.
+
 ## Database Schema
 
 ### `artwork` table
