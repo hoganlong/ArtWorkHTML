@@ -502,16 +502,16 @@ public partial class ArtworkHTML
      
       html.AppendLine($"  <div class='desc'>");
       html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
-      html.AppendLine($"    {BlankOrWithBR(art.ctDate.ToShortDateString(), "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(DateOrEmpty(art.ctDate), "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: ")}");
       html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
       html.AppendLine($"  </div>");
-      var artTags = string.Join(",", new[] { GetTypeTag(art.typeCode), art.ctDate == DateTime.MinValue ? "" : art.ctDate.Year.ToString(), art.humanId }.Where(t => !string.IsNullOrEmpty(t)));
+      var artTags = string.Join(",", new[] { GetTypeTag(art.typeCode), art.ctDate == DateTime.MinValue || art.ctDate.Year == 1900 ? "No-Date" : art.ctDate.Year.ToString(), art.humanId }.Where(t => !string.IsNullOrEmpty(t)));
       var seriesTag = MakeTag(art.series);
-      var seriesBtn = string.IsNullOrEmpty(seriesTag) ? "" : $" <button class='series-tag-btn' onclick='window._filterToTag(\"{EscapeHtml(seriesTag)}\")' title='Show whole series'>&#x1D42C;</button>";
-      html.AppendLine($"  <div class='desc'>Tags: <my-tags>{EscapeHtml(artTags)}</my-tags>{seriesBtn}</div>");
+      var seriesBtn = string.IsNullOrEmpty(seriesTag) ? "" : $" <button class='small-button series-tag-btn' data-series-tag='{EscapeHtml(seriesTag)}' onclick='window._filterToTag(\"{EscapeHtml(seriesTag)}\")' title='Show whole series'>S</button>";
+      html.AppendLine($"  <div class='desc'>Tags: <my-tags>{EscapeHtml(artTags)}</my-tags></div><div class='desc'>{seriesBtn}</div>");
       var hiddenTags = string.Join(",", new[] {
         seriesTag,
         MakeTag(art.location)
@@ -578,7 +578,7 @@ public partial class ArtworkHTML
       html.AppendLine($"<div>");
       html.AppendLine($"  <div class='desc'>");
       html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
-      html.AppendLine($"    {BlankOrWithBR(art.ctDate.ToShortDateString(), "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(DateOrEmpty(art.ctDate), "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: ")}");
@@ -682,7 +682,7 @@ public partial class ArtworkHTML
 
       html.AppendLine($"  <div class='desc'>");
       html.AppendLine($"    {BlankOrWithBR(art.pageNumber.ToString(), " ")}");
-      html.AppendLine($"    {BlankOrWithBR(art.ctDate.ToShortDateString(), "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(DateOrEmpty(art.ctDate), "  ")}");
 
       html.AppendLine($"    {BlankOrWithBR(art.location, "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");

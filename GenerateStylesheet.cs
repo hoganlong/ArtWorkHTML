@@ -352,23 +352,7 @@ footer {
     display: none;
   }
 
-  .series-tag-btn {
-    font-size: 0.7em;
-    padding: 7px 8px;
-    cursor: pointer;
-    border: 1px solid #aaa;
-    border-radius: 3px;
-    background: #f0f0f0;
-    vertical-align: super;
-    font-variant: small-caps;
-  }
-  .series-tag-btn:hover {
-    background: #3498db;
-    color: white;
-    border-color: #3498db;
-  }
-
-  .tag-title-banner
+.tag-title-banner
   {
     text-align: center;
     font-size: 8em;
@@ -507,6 +491,43 @@ footer {
     gap: 2px 10px;
     align-items: center;
   }
+
+.small-button {
+    /* Sizing & Alignment */
+    display: inline-block;
+    padding: 1px 4px; /* Adjust padding to control size */
+    font-size: 26px;
+    text-align: center;
+    text-decoration: none; /* Removes underline for <a> elements */
+    cursor: pointer; /* Changes cursor to a hand on hover */
+    
+    /* Appearance */
+    background-color: #007bff; /* Primary brand color */
+    color: white;
+    border: none;
+    border-radius: 5px; /* Rounded corners */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease; /* Smooth transitions for effects */
+
+    /* Ensures consistent font rendering */
+    font-family: sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+.small-button:hover {
+    background-color: #0056b3; /* Darker color on hover */
+    transform: translateY(-2px); /* Lifts the button slightly */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Increases shadow on hover */
+}
+
+.small-button:active {
+    transform: translateY(0); /* Pushes button down when clicked */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+
+
+
 
 @media (max-width: 768px) {
     .artwork-table {

@@ -225,7 +225,8 @@ public partial class ArtworkHTML
       string yearDisplay = clearDates ? "Unknown" : row.Year.ToString();
       string yearSeriesDisplay = row.SeriesCount == 0 ? "" : row.SeriesCount.ToString();
       string yearSoldDisplay = row.Sold == 0 ? "" : row.Sold.ToString();
-      string yearBrowse = clearDates ? "" : $"<a href='artwork.html?tagtitle={row.Year}&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>browse</a>";
+      string yearBrowseTag = clearDates ? "No-Date" : row.Year.ToString();
+      string yearBrowse = $"<a href='artwork.html?tagtitle={yearBrowseTag}&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>browse</a>";
       artworkYearRows.AppendLine($@"
                 <tr>
                     <td>{yearDisplay}</td>
@@ -293,7 +294,7 @@ public partial class ArtworkHTML
     {
       sketchbookRows.AppendLine($@"
                 <tr>
-                    <td><a href='sketchbooks/sketchbook{row.Number}.html'>Sketchbook {row.Number}</a></td>
+                    <td><a href='sketchbooks/sketchbook{row.Number}.html?show=all'>Sketchbook {row.Number}</a></td>
                     <td>{row.Pages}</td>
                     <td>{row.Start}</td>
                     <td>{row.End}</td>
@@ -382,7 +383,7 @@ public partial class ArtworkHTML
         </details>
 
         <h2>Sketchbooks</h2>
-        <a href='sketchbooks.html' class='nav-button nav-button-sm'>Browse All Sketchbooks</a>
+        <a href='sketchbooks.html?show=all' class='nav-button nav-button-sm'>Browse All Sketchbooks</a>
         <div class='stats-grid'>
             <div class='stat-card'>
                 <div class='stat-number'>" + totalSketchbooks + @"</div>
