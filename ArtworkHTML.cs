@@ -196,7 +196,7 @@ public partial class ArtworkHTML
     await GenerateCopyrightPage();
     await GenerateHowIsMadePage();
     await GenerateCreditsPage();
-    await GenerateHelpPage();
+    await GenerateHelpPage(null);
     await GenerateFeedbackPage();
     await GenerateOpensourcePage();
     await GenerateStylesheet();
@@ -219,7 +219,35 @@ public partial class ArtworkHTML
     await GenerateCopyrightPage();
     await GenerateHowIsMadePage();
     await GenerateCreditsPage();
-    await GenerateHelpPage();
+
+    var years = new List<int>();
+    var yearSql = "SELECT DISTINCT EXTRACT(YEAR FROM create_dt)::int FROM artwork WHERE create_dt IS NOT NULL AND EXTRACT(YEAR FROM create_dt) != 1900 ORDER BY 1";
+    await using (var conn = new NpgsqlConnection(_connectionString))
+    {
+      await conn.OpenAsync();
+      await using var cmd = new NpgsqlCommand(yearSql, conn);
+      await using var reader = await cmd.ExecuteReaderAsync();
+      while (await reader.ReadAsync())
+        years.Add(reader.GetInt32(0));
+    }
+
+    var sketchPages = new Dictionary<int, List<int>>();
+    var sketchPageSql = "SELECT DISTINCT sketchbook_number, page_number FROM sketch WHERE (hide IS NOT TRUE) AND sketchbook_number IS NOT NULL AND page_number IS NOT NULL ORDER BY sketchbook_number, page_number";
+    await using (var conn2 = new NpgsqlConnection(_connectionString))
+    {
+      await conn2.OpenAsync();
+      await using var cmd2 = new NpgsqlCommand(sketchPageSql, conn2);
+      await using var reader2 = await cmd2.ExecuteReaderAsync();
+      while (await reader2.ReadAsync())
+      {
+        int bookNum = reader2.GetInt32(0);
+        int pageNum = reader2.GetInt32(1);
+        if (!sketchPages.ContainsKey(bookNum))
+          sketchPages[bookNum] = new List<int>();
+        sketchPages[bookNum].Add(pageNum);
+      }
+    }
+    await GenerateHelpPage(years, sketchPages);
     await GenerateFeedbackPage();
     await GenerateOpensourcePage();
     await GenerateStylesheet();
