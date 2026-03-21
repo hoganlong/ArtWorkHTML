@@ -696,6 +696,7 @@ public partial class ArtworkHTML
       html.AppendLine($"{BlankOrComment(art.fileName, "filename: ")}");
 
       html.AppendLine($"  </div>");
+      html.AppendLine($"  <my-hidden-tags>B{art.sketchbookNumber}_P{art.pageNumber}</my-hidden-tags>");
 
       html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>", art.errors)}</div>");
 

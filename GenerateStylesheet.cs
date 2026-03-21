@@ -529,6 +529,46 @@ footer {
 
 
 
+.find-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.find-form select,
+.find-form input[type='number'] {
+    font-size: 1.1em;
+    padding: 10px 14px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background: white;
+    color: #333;
+    min-width: 130px;
+}
+
+.find-form input[type='number'] {
+    min-width: 110px;
+    max-width: 140px;
+}
+
+.find-form button {
+    font-size: 1.1em;
+    padding: 10px 28px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.find-form button:hover {
+    background: #2980b9;
+}
+
 @media (max-width: 768px) {
     .artwork-table {
         font-size: 0.9em;

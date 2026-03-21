@@ -142,7 +142,9 @@ Skipped steps are printed in gray so you can see what was bypassed. Any step fai
 - `FOLDED_DIMENSIONS` — Folded dimensions (optional)
 - `location` — Current location
 - `notes` — Additional notes
-- `human_readable_id` — Human-readable identifier
+- `human_readable_id` — Human-readable identifier. Format: `KL_{year}_{typeCode}_{number}`
+  where year is 4-digit creation year, typeCode is the single-letter artwork type code
+  (W/D/S/C/J/P/B/N), and number is zero-padded to 4 digits. Example: `KL_1982_D_0042`.
 - `artwork_image_id` — Legacy image identifier
 - `type_id` — Foreign key to `artwork_type` (stored as JSON array)
 
