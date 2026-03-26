@@ -388,6 +388,7 @@ footer {
 
   .thumb-buttons {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     gap: 5px;
     padding: 5px;

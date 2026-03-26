@@ -17,6 +17,10 @@ A .NET 10 console application that generates a static HTML website from artwork 
   - `copyright.html`, `howisitmade.html`, `credits.html`, `help.html`, `feedback.html`, `opensource.html` — Info pages (linked from footer)
   - `style.css` — Generated stylesheet
 
+### Error Reporting
+- At end of each run, prints a summary of error counts to console and appends it as an HTML comment at the end of `artwork.html`
+- Errors tracked: `Missing front photo`, `Missing back photo` (type W only), `Bucket image not found`, `Was found on server and not DB`, `Duplicate humanId`
+
 ### Gallery Features
 - **TAGS system** — Gallery items hidden by default; shown when their tags match active tags (see URL Parameters below)
 - **Type filter** — Filter artworks by type (All checkbox + per-type checkboxes, built dynamically from `<my-tags>` first tag)
@@ -102,11 +106,11 @@ Open `artwork_html/index.html` in a web browser to view the generated website.
 
 ## Full Pipeline / Deployment
 
-The full build-and-deploy pipeline is automated by `build-and-deploy.ps1` in the parent directory (`C:\Users\Hogan\Projects\claudetest\`).
+The full build-and-deploy pipeline is automated by `build-and-deploy.ps1` in the parent directory (`D:\Projects\claudetest\`).
 
 ### Run the full pipeline
 ```powershell
-cd C:\Users\Hogan\Projects\claudetest
+cd D:\Projects\claudetest
 .\build-and-deploy.ps1
 ```
 
