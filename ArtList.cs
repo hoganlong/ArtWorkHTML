@@ -25,8 +25,8 @@ namespace ArtWorkHTML
   {
     None = 0,
     Sketch = 1,
+    NonArtPhoto = 2,
 
-    undef1 = 2,
     undef2 = 4,
     undef3 = 8,
     undef4 = 16,
@@ -93,6 +93,12 @@ namespace ArtWorkHTML
     public Artwork AddBucketFile(string dir, string name, string ext, DateTime? lastModified,bool removeServerError = false)
     {
       var listElement = artworks.FirstOrDefault(x => x.Value.fileName == name);
+      if (listElement.Key == null)
+        listElement = artworks.Where(x => x.Value.backFileName != null)
+                              .FirstOrDefault(x => x.Value.backFileName!.Any(f => f == name));
+      if (listElement.Key == null)
+        listElement = artworks.Where(x => x.Value.frontFileName != null)
+                              .FirstOrDefault(x => x.Value.frontFileName!.Any(f => f == name));
       Artwork artwork = new Artwork(dir,name,removeServerError);
 
       if (listElement.Key == null)

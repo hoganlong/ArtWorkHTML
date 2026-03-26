@@ -68,6 +68,11 @@ public partial class ArtworkHTML
         LEFT JOIN dirimgGroup diri_front ON a.airtable_id = diri_front.artwork_id AND diri_front.lview ='Fron'
         ORDER BY a.human_readable_id, a.create_dt ASC NULLS last";
 
+    const string photoSQL = @"
+       SELECT p.file_location, p.human_readable_id
+       FROM photo p
+       WHERE p.file_location IS NOT NULL";
+
     const string sketchSQL = @"
        SELECT s.airtable_id, s.sketch_dt, s.description, s.sketch_loc, s.sketch_people,
               s.sketch_medium, s.sketchbook_number, s.page_number, s.artwork_id, s.filename, s.pub_notes,
@@ -145,7 +150,24 @@ public partial class ArtworkHTML
       sketchBookList.AddArtwork(sketch);
     } // while reader.ReadAsync()
     sketchreader.Close();
-    sketchcmd.Dispose();  
+    sketchcmd.Dispose();
+
+    // Load photo records so bucket scan can match them without creating noDB entries
+    await using var photocmd = new NpgsqlCommand(photoSQL, connection);
+    await using var photoreader = await photocmd.ExecuteReaderAsync();
+
+    while (await photoreader.ReadAsync())
+    {
+      string fileLocation = photoreader.GetString(0);
+      string humanReadableId = photoreader.IsDBNull(1) ? fileLocation : photoreader.GetString(1);
+
+      Artwork photo = new("", fileLocation, true);
+      photo.myType = ArtType.NonArtPhoto;
+      photo.humanId = humanReadableId;
+      artList.AddArtwork(photo);
+    }
+    photoreader.Close();
+    photocmd.Dispose();
 
     // Now get the bucket data
     string bucketName = "keithlong-art-photos";
@@ -260,7 +282,7 @@ public partial class ArtworkHTML
                   if (ext == "jpg")
                   {
                     // should really check if in correct (expected) location in bucket, but for now just set the state
-                    artList.AddBucketFile(dir, name, ext, lastModified);
+                    artList.AddBucketFile("", name, ext, lastModified);
                   }
                   else
                   {
@@ -277,6 +299,9 @@ public partial class ArtworkHTML
                 case "atch":
                   atchBucketFiles++;
                   // should really check if in correct (expected) location in bucket, but for now just set the state
+                  break;
+                case "jpg_hd":
+                  // ignore these files just stored here from photographer, not used right now.
                   break;
                 default:
                   Console.WriteLine($"Unknown directory: {dir} in file: {fullPath}");
@@ -411,6 +436,19 @@ public partial class ArtworkHTML
     foreach (var artItem in artList.artworks) // while (await reader.ReadAsync())
     {
       Artwork art = artItem.Value;
+
+      if (art.myType == ArtType.NonArtPhoto) continue;
+
+      if (art.typeCode == "W" &&
+          (art.backId == null || art.backId.Length == 0) &&
+          (art.backFileName == null || art.backFileName.Length == 0))
+        art.errors.Add("Missing back photo");
+
+      if (string.IsNullOrEmpty(art.fileName) &&
+          (art.frontId == null || art.frontId.Length == 0) &&
+          (art.frontFileName == null || art.frontFileName.Length == 0))
+        art.errors.Add("Missing front photo");
+
 /*
       if (art.states.HasFlag(StatesType.jpgFound))
       {
@@ -429,7 +467,6 @@ public partial class ArtworkHTML
       }
       else
       {
-        html.AppendLine($"  <div class='desc' style='color:red;'>No photo for artwork</div>");
       }
         // Add thumbnail buttons for additional views
         var thumbnails = new List<(string label, int[]? id)>
@@ -520,6 +557,11 @@ public partial class ArtworkHTML
         html.AppendLine($"  <my-hidden-tags>{EscapeHtml(hiddenTags)}</my-hidden-tags>");
 
       html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>", art.errors)}</div>");
+      foreach (var err in art.errors)
+      {
+        var key = err.StartsWith("Duplicate humanId") ? "Duplicate humanId" : err;
+        _errorCounts[key] = _errorCounts.TryGetValue(key, out int c) ? c + 1 : 1;
+      }
 
       if (art.states.HasFlag(StatesType.noDB))
         html.AppendLine($"<div class='desc'>Bucket name: {art.fileName}<br/></div>");
@@ -534,6 +576,15 @@ public partial class ArtworkHTML
 
     html.AppendLine(@"</div>");
     html.AppendLine(GetHtmlFooter());
+
+    if (_errorCounts.Count > 0)
+    {
+      html.AppendLine("<!--");
+      html.AppendLine("=== Artwork Page Errors ===");
+      foreach (var kvp in _errorCounts.OrderByDescending(x => x.Value))
+        html.AppendLine($"  {kvp.Value,4}x  {kvp.Key}");
+      html.AppendLine("-->");
+    }
 
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "artwork.html"), html.ToString());
 
