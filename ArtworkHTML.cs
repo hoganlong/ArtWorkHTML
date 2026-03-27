@@ -300,6 +300,16 @@ public partial class ArtworkHTML
       return ("");
   }
 
+  private static string BlankOrWithBR(string inS, string prepend = "", string append = "")
+  {
+    if (!string.IsNullOrEmpty(inS))
+    {
+      return (prepend + inS + append + "<br/>");
+    }
+    else
+      return ("");
+  }
+
   private string GetHtmlHeader(string title, string pathPrefix = "")
   {
     return $@"<!DOCTYPE html>

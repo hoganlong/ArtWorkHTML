@@ -429,6 +429,13 @@ public partial class ArtworkHTML
         if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
     });
     </script>
+    <script>
+    function applyWideThumb(img) {
+        if (img.naturalWidth > img.naturalHeight * 1.4) {
+            img.style.width = Math.min(Math.round(40 * img.naturalWidth / img.naturalHeight), 220) + 'px';
+        }
+    }
+    </script>
     <div id='tag-title' class='tag-title-banner' style='display:none'></div>
     <div class='container'>");
 
@@ -501,7 +508,7 @@ public partial class ArtworkHTML
                 var thumbUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "small");
                 var fullUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "full");
                 var largeUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "large");
-                thumbButtons.Add($"<a href='{fullUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{thumb.label}{(hasMult?" "+curNum.ToString(): "")}'><img src='{thumbUrl}' width='36' height='36' /><img src='{largeUrl}' class='thumb-preview' /></a>");
+                thumbButtons.Add($"<a href='{fullUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{thumb.label}{(hasMult?" "+curNum.ToString(): "")}'><img src='{thumbUrl}' width='40' height='40' onload='applyWideThumb(this)' /><img src='{largeUrl}' class='thumb-preview' /></a>");
               }
               curNum++;
             }
@@ -522,7 +529,7 @@ public partial class ArtworkHTML
               {
                 var url = art.MakeJPGURL(name);
                 
-                thumbButtons.Add($"<a href='{url}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{filethumb.label}(L){(hasMult?" "+curNum.ToString(): "")}'><img src='{url}' width='36' height='36' /><img src='{url}' width='100' height='100' class='thumb-preview' /></a>");
+                thumbButtons.Add($"<a href='{url}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{filethumb.label}(L){(hasMult?" "+curNum.ToString(): "")}'><img src='{url}' width='40' height='40' onload='applyWideThumb(this)' /><img src='{url}' width='100' height='100' class='thumb-preview' /></a>");
               }
               curNum++;
             }
@@ -541,8 +548,8 @@ public partial class ArtworkHTML
       html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
       html.AppendLine($"    {BlankOrWithBR(DateOrEmpty(art.ctDate), "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
-      html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  ")}");
-      html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  "," inches")}");
+      html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: "," inches")}");
       html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
       html.AppendLine($"  </div>");
       var artTags = string.Join(",", new[] { GetTypeTag(art.typeCode), art.ctDate == DateTime.MinValue || art.ctDate.Year == 1900 ? "No-Date" : art.ctDate.Year.ToString(), art.humanId }.Where(t => !string.IsNullOrEmpty(t)));
@@ -631,8 +638,8 @@ public partial class ArtworkHTML
       html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
       html.AppendLine($"    {BlankOrWithBR(DateOrEmpty(art.ctDate), "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
-      html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  ")}");
-      html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  "," inches")}");
+      html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: "," inches")}");
       html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
       html.AppendLine($"    {BlankOrWithBR(art.humanId, "  ")}");
       html.AppendLine($"  </div>");
