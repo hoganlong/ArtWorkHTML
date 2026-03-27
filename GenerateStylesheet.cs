@@ -409,8 +409,8 @@ footer {
 
   .thumb-button img:not(.thumb-preview) {
     display: block;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
   }
 
   .thumb-button img.thumb-preview {
