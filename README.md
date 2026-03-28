@@ -26,6 +26,7 @@ A .NET 10 console application that generates a static HTML website from artwork 
 - **Type filter** — Filter artworks by type (All checkbox + per-type checkboxes, built dynamically from `<my-tags>` first tag)
 - **Series button** — Each artwork with a series shows a small ꜱ button; clicking it filters to show only that series
 - **Thumbnail preview** — Hover over a thumbnail button to see a larger preview popup
+- **Adaptive thumbnail sizing** — Wide thumbnails expand horizontally (up to 220px); tall/portrait thumbnails swap to the large S3 image and expand vertically (up to 120px) to avoid blur from upscaling
 - **Image zoom** — Hover over a gallery image to zoom in (2x, anchored to bottom)
 - **Keyboard shortcuts** — `z` image zoom toggle, `p` thumbnail preview toggle, `t` scroll to top
 
