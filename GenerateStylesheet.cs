@@ -392,7 +392,6 @@ footer {
     justify-content: center;
     gap: 5px;
     padding: 5px;
-    background: #f8f9fa;
   }
 
   .thumb-button {
