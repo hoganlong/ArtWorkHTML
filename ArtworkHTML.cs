@@ -52,6 +52,7 @@ public partial class ArtworkHTML
   private readonly string _connectionString;
   private readonly string _outputDirectory;
   private readonly Dictionary<string, int> _errorCounts = new();
+  public bool DbSketchOnly { get; set; } = false;
   private static readonly string _version =
     System.Reflection.Assembly.GetExecutingAssembly()
       .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
@@ -191,8 +192,17 @@ public partial class ArtworkHTML
     _outputDirectory = outputDirectory;
   }
 
+  private void CleanOutputDirectory()
+  {
+    foreach (var file in Directory.EnumerateFiles(_outputDirectory, "*.html", SearchOption.AllDirectories))
+      File.Delete(file);
+    foreach (var file in Directory.EnumerateFiles(_outputDirectory, "*.css", SearchOption.AllDirectories))
+      File.Delete(file);
+  }
+
   public async Task GenerateStaticPages()
   {
+    CleanOutputDirectory();
     await GenerateIndexPage();
     await GenerateCopyrightPage();
     await GenerateHowIsMadePage();
@@ -214,6 +224,7 @@ public partial class ArtworkHTML
 
   public async Task GenerateAllPages()
   {
+    CleanOutputDirectory();
     await GenerateIndexPage();
     await GenerateStatisticsPage();
     await GenerateArtworkPages();
