@@ -78,6 +78,12 @@ class Program
 
         var generator = new ArtworkHTML(postgresConnectionString!, fullOutputPath);
 
+        if (args.Contains("--dbsketchonly"))
+        {
+            generator.DbSketchOnly = true;
+            Console.WriteLine("Mode: --dbsketchonly (sketchbook pages limited to database entries only)");
+        }
+
         Console.WriteLine("Generating HTML pages...");
         if (staticOnly)
           await generator.GenerateStaticPages();

@@ -224,7 +224,8 @@ public partial class ArtworkHTML
 
           if (dir == "scans" && ext == "tif" && filename.StartsWith("KLA")) // It's a sketchbook TIF so add it to the sketchbook list
           {
-            sketchBookList.AddSketchBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
+            if (!DbSketchOnly)
+              sketchBookList.AddSketchBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
             continue;
           }
 
@@ -243,7 +244,8 @@ public partial class ArtworkHTML
             }
             if (dir == "scans/jpg" && filename.StartsWith("KLA")) // It's a sketchbook image so add it to the sketchbook list
             {
-              sketchBookList.AddSketchBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
+              if (!DbSketchOnly)
+                sketchBookList.AddSketchBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
               continue;
             }
             else  // It's a polaroid image so add it to the polaroid list
