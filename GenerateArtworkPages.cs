@@ -494,7 +494,7 @@ public partial class ArtworkHTML
       html.AppendLine($@"<div class='gallery-item'>");
       if ((art.states & StatesType.NoImage) == 0) // if we have an image
       {
-        html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'>
+        html.AppendLine($@"  <a href='{art.jpgURL}' rel='noopener noreferrer'>
                    <img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/>
                     </a><br/>
                     <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
@@ -571,7 +571,7 @@ public partial class ArtworkHTML
           html.AppendLine($"  </div>");
         }
      
-      html.AppendLine($"  <div class='desc'>");
+      html.AppendLine($"  <div class='desc item-description'>");
       html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
       html.AppendLine($"    {BlankOrWithBR(DateOrEmpty(art.ctDate), "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
@@ -609,6 +609,8 @@ public partial class ArtworkHTML
     }
 
     html.AppendLine(@"</div>");
+    html.AppendLine(GetLightboxHtml());
+    html.AppendLine($"<script>{GetLightboxScript()}</script>");
     html.AppendLine(GetHtmlFooter());
 
     if (_errorCounts.Count > 0)
@@ -657,11 +659,11 @@ public partial class ArtworkHTML
       Artwork art = artItem.Value;
 
       html.AppendLine($@"<div class='gallery-item'>");
-      html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
+      html.AppendLine($@"  <a href='{art.jpgURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
         <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
 
       html.AppendLine($"<div>");
-      html.AppendLine($"  <div class='desc'>");
+      html.AppendLine($"  <div class='desc item-description'>");
       html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
       html.AppendLine($"    {BlankOrWithBR(DateOrEmpty(art.ctDate), "  ")}");
       html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
@@ -685,6 +687,8 @@ public partial class ArtworkHTML
     }
 
     html.AppendLine(@"</div>");
+    html.AppendLine(GetLightboxHtml());
+    html.AppendLine($"<script>{GetLightboxScript()}</script>");
     html.AppendLine(GetHtmlFooter());
 
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "polaroids.html"), html.ToString());
@@ -709,6 +713,8 @@ public partial class ArtworkHTML
         {
           // If this is not the first sketchbook, we need to write out the previous one before starting a new one
           html.AppendLine(@"</div>"); // close container
+          html.AppendLine(GetLightboxHtml());
+          html.AppendLine($"<script>{GetLightboxScript()}</script>");
           html.AppendLine(GetHtmlFooter("../"));
           await File.WriteAllTextAsync(Path.Combine(sketchbooksDir, $"sketchbook{lastSketchbookNumber}.html"), html.ToString());
           Console.WriteLine($"  ✓ sketchbooks/sketchbook{lastSketchbookNumber}.html");
@@ -762,10 +768,10 @@ public partial class ArtworkHTML
       Artwork art = sketchBookEntry.Value;
 
       html.AppendLine($@"<div class='gallery-item'>");
-      html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
+      html.AppendLine($@"  <a href='{art.jpgURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
         <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
 
-      html.AppendLine($"  <div class='desc'>");
+      html.AppendLine($"  <div class='desc item-description'>");
       html.AppendLine($"    {BlankOrWithBR(art.pageNumber.ToString(), " ")}");
       html.AppendLine($"    {BlankOrWithBR(DateOrEmpty(art.ctDate), "  ")}");
 
@@ -794,6 +800,8 @@ public partial class ArtworkHTML
     }
 
     html.AppendLine(@"</div>");
+    html.AppendLine(GetLightboxHtml());
+    html.AppendLine($"<script>{GetLightboxScript()}</script>");
     html.AppendLine(GetHtmlFooter("../"));
 
     await File.WriteAllTextAsync(Path.Combine(sketchbooksDir, $"sketchbook{lastSketchbookNumber}.html"), html.ToString());
@@ -823,7 +831,142 @@ public partial class ArtworkHTML
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "sketchbooks.html"), html.ToString());
     Console.WriteLine("  ✓ sketchbooks.html - Sketchbook index");
 
-    #endregion  
-    
+    #endregion
+
+    #region hidden sketchbook pages
+    var lastHideSketchbookNumber = -1;
+    List<int> hideSketchbookNumbers = sketchBookList.artworks.Values.Where(e => e.myType.HasFlag(ArtType.Sketch) && e.hide).Select(a => a.sketchbookNumber).Distinct().OrderBy(n => n).ToList();
+
+    if (hideSketchbookNumbers.Count > 0)
+    {
+      // Ensure hide subdirectory exists
+      var hideDir = Path.Combine(_outputDirectory, "hide");
+      Directory.CreateDirectory(hideDir);
+
+      // Now generate the HTML page for each hidden sketchbook
+      foreach (var sketchBookEntry in sketchBookList.artworks.Where(e => e.Value.myType.HasFlag(ArtType.Sketch) && e.Value.hide).OrderBy(e => e.Value.sketchbookNumber).ThenBy(e => e.Value.pageNumber))
+      {
+        int bookNumber = sketchBookEntry.Value.sketchbookNumber;
+
+        if (bookNumber != lastHideSketchbookNumber)
+        {
+          if (lastHideSketchbookNumber != -1)
+          {
+            html.AppendLine(@"</div>"); // close container
+            html.AppendLine(GetLightboxHtml());
+            html.AppendLine($"<script>{GetLightboxScript()}</script>");
+            html.AppendLine(GetHtmlFooter("../"));
+            await File.WriteAllTextAsync(Path.Combine(hideDir, $"sketchbook{lastHideSketchbookNumber}.html"), html.ToString());
+            Console.WriteLine($"  ✓ hide/sketchbook{lastHideSketchbookNumber}.html");
+          }
+          lastHideSketchbookNumber = bookNumber;
+          html.Clear();
+
+          html.AppendLine(GetHtmlHeader($"Sketchbook {bookNumber} (Hidden) - Keith Long Archive", "../"));
+
+          html.AppendLine(@"
+          <div class='container'>
+            <h1>Sketchbooks (Hidden)</h1>
+            <p class='subtitle'><a id='back-link' href='../index.html'>← Back to Home</a></p>");
+
+          if (hideSketchbookNumbers.Count > 1)
+          {
+            html.AppendLine("<div class='sketchbook-nav'><span class='sketchbook-nav-label'>Sketchbook:</span>");
+            foreach (var entry in hideSketchbookNumbers)
+            {
+              if (entry == bookNumber)
+                html.AppendLine($"<span class='nav-button sketchbook-nav-button active'>{entry}</span>");
+              else
+                html.AppendLine($"<a href='sketchbook{entry}.html?show=all' class='nav-button sketchbook-nav-button'>{entry}</a>");
+            }
+            html.AppendLine("</div>");
+          }
+
+          html.AppendLine(@"
+          </div>
+          <div class='page-controls'>
+              <span class='page-controls-label'>Hover effects:</span>
+              <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom (z)</label>
+          </div>");
+          html.AppendLine($"<script>{GetTagsScript()}</script>");
+          html.AppendLine(@"<script>
+            document.addEventListener('keydown', function(e) {
+              if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+              if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
+              if (e.key === 'p' || e.key === 'P') document.getElementById('chk-thumb-hover')?.click();
+              if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+          </script>
+          <div id='tag-title' class='tag-title-banner' style='display:none'></div>
+          <div class='container'>");
+
+          html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
+        }
+
+        Artwork art = sketchBookEntry.Value;
+
+        html.AppendLine($@"<div class='gallery-item'>");
+        html.AppendLine($@"  <a href='{art.jpgURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
+          <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
+
+        html.AppendLine($"  <div class='desc item-description'>");
+        html.AppendLine($"    {BlankOrWithBR(art.pageNumber.ToString(), " ")}");
+        html.AppendLine($"    {BlankOrWithBR(DateOrEmpty(art.ctDate), "  ")}");
+        html.AppendLine($"    {BlankOrWithBR(art.location, "  ")}");
+        html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
+        html.AppendLine($"    {BlankOrWithBR(art.people, "  ")}");
+        html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
+
+        html.AppendLine($"{BlankOrComment(art.id, "id: ")}");
+        html.AppendLine($"{BlankOrComment(art.artworkID!, "artid: ")}");
+        html.AppendLine($"{BlankOrComment(art.humanId, "humandId: ")}");
+        html.AppendLine($"{BlankOrComment(art.fileName, "filename: ")}");
+
+        html.AppendLine($"  </div>");
+        html.AppendLine($"  <my-hidden-tags>B{art.sketchbookNumber}_P{art.pageNumber}</my-hidden-tags>");
+
+        html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>", art.errors)}</div>");
+
+        if (art.states.HasFlag(StatesType.jpgFound))
+          html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
+        if (art.states.HasFlag(StatesType.tifFound))
+          html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
+
+        html.AppendLine($"</div>  <!-- gallery item -->");
+      }
+
+      html.AppendLine(@"</div>");
+      html.AppendLine(GetLightboxHtml());
+      html.AppendLine($"<script>{GetLightboxScript()}</script>");
+      html.AppendLine(GetHtmlFooter("../"));
+
+      await File.WriteAllTextAsync(Path.Combine(hideDir, $"sketchbook{lastHideSketchbookNumber}.html"), html.ToString());
+      Console.WriteLine($"  ✓ hide/sketchbook{lastHideSketchbookNumber}.html");
+
+      // Generate hide.html index at root
+      html.Clear();
+      html.AppendLine(GetHtmlHeader("Hidden Sketchbook Pages - Keith Long Archive"));
+      html.AppendLine(@"
+      <div class='container landing-page'>
+        <div class='landing-header'>
+          <h1>Hidden Sketchbook Pages</h1>
+          <p class='subtitle'><a id='back-link' href='index.html'>← Back to Home</a></p>
+        </div>
+        <div class='landing-content'>
+          <p>These sketchbook pages are marked as hidden and are not shown in the main sketchbook view.</p>
+        </div>
+        <div class='navigation'>");
+      foreach (var n in hideSketchbookNumbers)
+        html.AppendLine($"<div class='nav-button-wrap'><a href='hide/sketchbook{n}.html?show=all' class='nav-button'>Sketchbook {n}</a><div class='coming-soon'>&nbsp;</div></div>");
+      html.AppendLine(@"
+        </div>
+      </div>");
+      html.AppendLine(GetHtmlFooter());
+      await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "hide.html"), html.ToString());
+      Console.WriteLine("  ✓ hide.html - Hidden sketchbook pages index");
+    }
+
+    #endregion
+
     }
 }
