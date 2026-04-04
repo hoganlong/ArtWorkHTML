@@ -446,6 +446,23 @@ public partial class ArtworkHTML
         }
     }
     </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.thumb-button').forEach(function(btn) {
+            btn.addEventListener('mouseenter', function() {
+                if (this.querySelector('.thumb-preview')) return;
+                var thumbImg = this.querySelector('img[data-large-src]');
+                if (!thumbImg) return;
+                var src = thumbImg.dataset.largeSrc || thumbImg.src;
+                if (!src) return;
+                var preview = document.createElement('img');
+                preview.className = 'thumb-preview';
+                preview.src = src;
+                this.appendChild(preview);
+            });
+        });
+    });
+    </script>
     <div id='tag-title' class='tag-title-banner' style='display:none'></div>
     <div class='container'>");
 
@@ -478,7 +495,7 @@ public partial class ArtworkHTML
       if ((art.states & StatesType.NoImage) == 0) // if we have an image
       {
         html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'>
-                   <img src='{art.jpgURL}' title='(click for full size)'/>
+                   <img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/>
                     </a><br/>
                     <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
       }
@@ -518,7 +535,7 @@ public partial class ArtworkHTML
                 var thumbUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "small");
                 var fullUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "full");
                 var largeUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "large");
-                thumbButtons.Add($"<a href='{fullUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{thumb.label}{(hasMult?" "+curNum.ToString(): "")}'><img src='{thumbUrl}' width='40' height='40' data-large-src='{largeUrl}' onload='applyThumbSize(this)' /><img src='{largeUrl}' class='thumb-preview' /></a>");
+                thumbButtons.Add($"<a href='{fullUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{thumb.label}{(hasMult?" "+curNum.ToString(): "")}'><img src='{thumbUrl}' width='40' height='40' data-large-src='{largeUrl}' onload='applyThumbSize(this)' loading='lazy' /></a>");
               }
               curNum++;
             }
@@ -539,7 +556,7 @@ public partial class ArtworkHTML
               {
                 var url = art.MakeJPGURL(name);
                 
-                thumbButtons.Add($"<a href='{url}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{filethumb.label}(L){(hasMult?" "+curNum.ToString(): "")}'><img src='{url}' width='40' height='40' onload='applyThumbSize(this)' /><img src='{url}' width='100' height='100' class='thumb-preview' /></a>");
+                thumbButtons.Add($"<a href='{url}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{filethumb.label}(L){(hasMult?" "+curNum.ToString(): "")}'><img src='{url}' width='40' height='40' data-large-src='{url}' onload='applyThumbSize(this)' loading='lazy' /></a>");
               }
               curNum++;
             }
@@ -640,7 +657,7 @@ public partial class ArtworkHTML
       Artwork art = artItem.Value;
 
       html.AppendLine($@"<div class='gallery-item'>");
-      html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)'/></a><br/>
+      html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
         <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
 
       html.AppendLine($"<div>");
@@ -745,7 +762,7 @@ public partial class ArtworkHTML
       Artwork art = sketchBookEntry.Value;
 
       html.AppendLine($@"<div class='gallery-item'>");
-      html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)'/></a><br/>
+      html.AppendLine($@"  <a href='{art.jpgURL}' target='_blank' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
         <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
 
       html.AppendLine($"  <div class='desc'>");
