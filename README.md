@@ -14,6 +14,8 @@ A .NET 10 console application that generates a static HTML website from artwork 
   - `polaroids.html` — Polaroid scan gallery
   - `sketchbooks.html` — Sketchbook index with intro text and a button for each sketchbook
   - `sketchbooks/sketchbook1.html`, `sketchbooks/sketchbook2.html`, ... — One page per sketchbook (generated dynamically into `sketchbooks/` subfolder)
+  - `hide.html` — Index of hidden sketchbook pages (only generated if any sketch rows have `hide = true`)
+  - `hide/sketchbook1.html`, `hide/sketchbook2.html`, ... — One page per sketchbook containing only pages with `hide = true` (generated dynamically into `hide/` subfolder)
   - `copyright.html`, `howisitmade.html`, `credits.html`, `help.html`, `feedback.html`, `opensource.html` — Info pages (linked from footer)
   - `style.css` — Generated stylesheet
 
@@ -168,6 +170,7 @@ Skipped steps are printed in gray so you can see what was bypassed. Any step fai
 ### `sketch` table
 - `airtable_id`, `sketch_dt`, `description`, `sketch_loc`, `sketch_people`
 - `sketch_medium`, `sketchbook_number`, `page_number`, `artwork_id`, `filename`, `pub_notes`
+- `hide` — boolean; pages with `hide = true` are excluded from `sketchbooks/` pages and instead appear only in `hide/` pages
 
 ## S3 Bucket Structure
 
