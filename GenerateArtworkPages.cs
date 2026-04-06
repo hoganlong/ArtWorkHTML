@@ -835,7 +835,7 @@ public partial class ArtworkHTML
 
     #region hidden sketchbook pages
     var lastHideSketchbookNumber = -1;
-    List<int> hideSketchbookNumbers = sketchBookList.artworks.Values.Where(e => e.myType.HasFlag(ArtType.Sketch) && e.hide).Select(a => a.sketchbookNumber).Distinct().OrderBy(n => n).ToList();
+    List<int> hideSketchbookNumbers = sketchBookList.artworks.Values.Where(e => e.myType.HasFlag(ArtType.Sketch) && (e.hide || e.states.HasFlag(StatesType.noDB))).Select(a => a.sketchbookNumber).Distinct().OrderBy(n => n).ToList();
 
     if (hideSketchbookNumbers.Count > 0)
     {
@@ -844,7 +844,7 @@ public partial class ArtworkHTML
       Directory.CreateDirectory(hideDir);
 
       // Now generate the HTML page for each hidden sketchbook
-      foreach (var sketchBookEntry in sketchBookList.artworks.Where(e => e.Value.myType.HasFlag(ArtType.Sketch) && e.Value.hide).OrderBy(e => e.Value.sketchbookNumber).ThenBy(e => e.Value.pageNumber))
+      foreach (var sketchBookEntry in sketchBookList.artworks.Where(e => e.Value.myType.HasFlag(ArtType.Sketch) && (e.Value.hide || e.Value.states.HasFlag(StatesType.noDB))).OrderBy(e => e.Value.sketchbookNumber).ThenBy(e => e.Value.pageNumber))
       {
         int bookNumber = sketchBookEntry.Value.sketchbookNumber;
 
