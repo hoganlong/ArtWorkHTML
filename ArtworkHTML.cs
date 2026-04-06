@@ -367,4 +367,74 @@ public partial class ArtworkHTML
                .Replace("\"", "&quot;")
                .Replace("'", "&#39;");
   }
+
+  private static string GetLightboxHtml()
+  {
+    return @"<div id='lightbox' class='lightbox'>
+  <div class='lightbox-overlay'></div>
+  <div class='lightbox-container'>
+    <button class='lightbox-close' title='Close (Esc)'>&#x2715;</button>
+    <button class='lightbox-prev' title='Previous (&#8592;)'>&#10094;</button>
+    <div class='lightbox-content'>
+      <img class='lightbox-img' src='' alt='' />
+      <div class='lightbox-caption'></div>
+    </div>
+    <button class='lightbox-next' title='Next (&#8594;)'>&#10095;</button>
+  </div>
+</div>";
+  }
+
+  private static string GetLightboxScript()
+  {
+    return @"(function() {
+  var lb = document.getElementById('lightbox');
+  var lbImg = lb.querySelector('.lightbox-img');
+  var lbCaption = lb.querySelector('.lightbox-caption');
+  var lbPrev = lb.querySelector('.lightbox-prev');
+  var lbNext = lb.querySelector('.lightbox-next');
+  var lbClose = lb.querySelector('.lightbox-close');
+  var items = [], currentIndex = 0;
+
+  function openLightbox(item) {
+    items = Array.from(document.querySelectorAll('.gallery-item.tag-active'));
+    currentIndex = items.indexOf(item);
+    showItem(currentIndex);
+    lb.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeLightbox() {
+    lb.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  function showItem(index) {
+    var item = items[index];
+    var anchor = item.querySelector('a');
+    lbImg.src = anchor ? anchor.href : '';
+    var descEl = item.querySelector('.item-description');
+    lbCaption.innerHTML = descEl ? descEl.innerHTML : '';
+    lbPrev.style.visibility = index > 0 ? '' : 'hidden';
+    lbNext.style.visibility = index < items.length - 1 ? '' : 'hidden';
+  }
+  function navigate(dir) {
+    var next = currentIndex + dir;
+    if (next >= 0 && next < items.length) { currentIndex = next; showItem(currentIndex); }
+  }
+
+  document.addEventListener('click', function(e) {
+    var anchor = e.target.closest('.gallery-item > a');
+    if (!anchor) return;
+    e.preventDefault();
+    openLightbox(anchor.closest('.gallery-item'));
+  });
+  lbPrev.addEventListener('click', function() { navigate(-1); });
+  lbNext.addEventListener('click', function() { navigate(1); });
+  lbClose.addEventListener('click', closeLightbox);
+  document.addEventListener('keydown', function(e) {
+    if (!lb.classList.contains('active')) return;
+    if (e.key === 'ArrowLeft') navigate(-1);
+    if (e.key === 'ArrowRight') navigate(1);
+    if (e.key === 'Escape') closeLightbox();
+  });
+})();";
+  }
 }
