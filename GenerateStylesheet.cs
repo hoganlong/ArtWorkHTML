@@ -595,6 +595,10 @@ footer {
 .lightbox-prev:hover, .lightbox-next:hover { background:rgba(255,255,255,0.3); }
 .lightbox-close { position:absolute; top:-2.5rem; right:0; background:none; border:none; color:white; font-size:1.8rem; cursor:pointer; padding:0 5px; opacity:0.8; transition:opacity 0.2s; }
 .lightbox-close:hover { opacity:1; }
+.lightbox-view-nav { display:flex; align-items:center; gap:8px; padding:6px 0 0; }
+.lightbox-view-prev, .lightbox-view-next { background:rgba(255,255,255,0.15); border:none; color:white; font-size:1.2rem; cursor:pointer; padding:3px 10px; border-radius:4px; user-select:none; transition:background 0.2s; }
+.lightbox-view-prev:hover, .lightbox-view-next:hover { background:rgba(255,255,255,0.3); }
+.lightbox-view-label { color:#ccc; font-size:0.85em; min-width:100px; text-align:center; }
 ";
 
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "style.css"), css);
