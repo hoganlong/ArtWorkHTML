@@ -374,12 +374,17 @@ public partial class ArtworkHTML
   <div class='lightbox-overlay'></div>
   <div class='lightbox-container'>
     <button class='lightbox-close' title='Close (Esc)'>&#x2715;</button>
-    <button class='lightbox-prev' title='Previous (&#8592;)'>&#10094;</button>
+    <button class='lightbox-prev' title='Previous artwork (&#8592;)'>&#10094;</button>
     <div class='lightbox-content'>
       <img class='lightbox-img' src='' alt='' />
+      <div class='lightbox-view-nav' style='display:none'>
+        <button class='lightbox-view-prev' title='Previous view (&#8593;)'>&#10094;</button>
+        <span class='lightbox-view-label'></span>
+        <button class='lightbox-view-next' title='Next view (&#8595;)'>&#10095;</button>
+      </div>
       <div class='lightbox-caption'></div>
     </div>
-    <button class='lightbox-next' title='Next (&#8594;)'>&#10095;</button>
+    <button class='lightbox-next' title='Next artwork (&#8594;)'>&#10095;</button>
   </div>
 </div>";
   }
@@ -393,7 +398,26 @@ public partial class ArtworkHTML
   var lbPrev = lb.querySelector('.lightbox-prev');
   var lbNext = lb.querySelector('.lightbox-next');
   var lbClose = lb.querySelector('.lightbox-close');
+  var lbViewNav = lb.querySelector('.lightbox-view-nav');
+  var lbViewPrev = lb.querySelector('.lightbox-view-prev');
+  var lbViewNext = lb.querySelector('.lightbox-view-next');
+  var lbViewLabel = lb.querySelector('.lightbox-view-label');
   var items = [], currentIndex = 0;
+  var currentViews = [], currentView = 0;
+
+  function getItemViews(item) {
+    var views = [];
+    var mainAnchor = item.querySelector(':scope > a');
+    if (mainAnchor && mainAnchor.href) {
+      views.push({ src: mainAnchor.href, label: 'Main' });
+    }
+    item.querySelectorAll('.thumb-button').forEach(function(btn) {
+      if (btn.href) {
+        views.push({ src: btn.href, label: btn.title || 'View' });
+      }
+    });
+    return views;
+  }
 
   function openLightbox(item) {
     items = Array.from(document.querySelectorAll('.gallery-item.tag-active'));
@@ -406,18 +430,38 @@ public partial class ArtworkHTML
     lb.classList.remove('active');
     document.body.style.overflow = '';
   }
+  function showView(viewIndex) {
+    currentView = viewIndex;
+    lbImg.src = currentViews[currentView].src;
+    lbViewLabel.textContent = currentViews[currentView].label + ' (' + (currentView + 1) + '/' + currentViews.length + ')';
+    lbViewPrev.style.visibility = currentView > 0 ? '' : 'hidden';
+    lbViewNext.style.visibility = currentView < currentViews.length - 1 ? '' : 'hidden';
+  }
   function showItem(index) {
     var item = items[index];
-    var anchor = item.querySelector('a');
-    lbImg.src = anchor ? anchor.href : '';
+    currentViews = getItemViews(item);
+    currentView = 0;
+    lbImg.src = currentViews.length > 0 ? currentViews[0].src : '';
+    if (currentViews.length > 1) {
+      lbViewNav.style.display = '';
+      lbViewLabel.textContent = currentViews[0].label + ' (1/' + currentViews.length + ')';
+      lbViewPrev.style.visibility = 'hidden';
+      lbViewNext.style.visibility = '';
+    } else {
+      lbViewNav.style.display = 'none';
+    }
     var descEl = item.querySelector('.item-description');
     lbCaption.innerHTML = descEl ? descEl.innerHTML : '';
     lbPrev.style.visibility = index > 0 ? '' : 'hidden';
     lbNext.style.visibility = index < items.length - 1 ? '' : 'hidden';
   }
-  function navigate(dir) {
+  function navigateArtwork(dir) {
     var next = currentIndex + dir;
     if (next >= 0 && next < items.length) { currentIndex = next; showItem(currentIndex); }
+  }
+  function navigateView(dir) {
+    var next = currentView + dir;
+    if (next >= 0 && next < currentViews.length) { showView(next); }
   }
 
   document.addEventListener('click', function(e) {
@@ -426,13 +470,18 @@ public partial class ArtworkHTML
     e.preventDefault();
     openLightbox(anchor.closest('.gallery-item'));
   });
-  lbPrev.addEventListener('click', function() { navigate(-1); });
-  lbNext.addEventListener('click', function() { navigate(1); });
+  lbPrev.addEventListener('click', function() { navigateArtwork(-1); });
+  lbNext.addEventListener('click', function() { navigateArtwork(1); });
+  lbViewPrev.addEventListener('click', function() { navigateView(-1); });
+  lbViewNext.addEventListener('click', function() { navigateView(1); });
   lbClose.addEventListener('click', closeLightbox);
+  lb.querySelector('.lightbox-overlay').addEventListener('click', closeLightbox);
   document.addEventListener('keydown', function(e) {
     if (!lb.classList.contains('active')) return;
-    if (e.key === 'ArrowLeft') navigate(-1);
-    if (e.key === 'ArrowRight') navigate(1);
+    if (e.key === 'ArrowLeft') navigateArtwork(-1);
+    if (e.key === 'ArrowRight') navigateArtwork(1);
+    if (e.key === 'ArrowUp') { e.preventDefault(); navigateView(-1); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); navigateView(1); }
     if (e.key === 'Escape') closeLightbox();
   });
 })();";

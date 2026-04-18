@@ -242,16 +242,16 @@ namespace ArtWorkHTML
       this.artworkID = artworkID;
       this.pubNotes = pubNotes;
       this.fileName = fileName;
-      char lastChar = fileName[^1];
-      this.humanId = $"KLA_{sketchbookNumber}_{pageNumber}{(char.IsLetter(lastChar)? lastChar.ToString() : "")}";
-       if (string.IsNullOrEmpty(fileName))
+      if (string.IsNullOrEmpty(fileName))
       { // set no image state if we don't have an image file name
+        this.humanId = $"KLA_{sketchbookNumber}_{pageNumber}";
         this.states |= StatesType.NoImage;
-        // Use Front image as fallback if available
         this.errors.Add("Bucket image not found");
       }
       else
       { // Remove no image state if we have an image file name
+        char lastChar = fileName[^1];
+        this.humanId = $"KLA_{sketchbookNumber}_{pageNumber}{(char.IsLetter(lastChar) ? lastChar.ToString() : "")}";
         this.states &= ~StatesType.NoImage;
       }
       // the following is not "tested" in code and should 
