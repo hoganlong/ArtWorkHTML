@@ -24,7 +24,7 @@ public partial class ArtworkHTML
             SELECT
                 COUNT(*) as total_artworks,
                 COUNT(DISTINCT series) as total_series,
-                COUNT(DISTINCT location) as total_locations,
+                COUNT(DISTINCT CASE WHEN location IS NOT NULL AND TRIM(location) != '' AND LOWER(TRIM(location)) != 'sold' THEN location END) as total_locations,
                 MIN(create_dt) as earliest_date,
                 MAX(create_dt) as latest_date
             FROM artwork

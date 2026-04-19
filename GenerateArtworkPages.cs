@@ -579,13 +579,15 @@ public partial class ArtworkHTML
       html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: "," inches")}");
       html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
       html.AppendLine($"  </div>");
-      var artTags = string.Join(",", new[] { GetTypeTag(art.typeCode), art.ctDate == DateTime.MinValue || art.ctDate.Year == 1900 ? "No-Date" : art.ctDate.Year.ToString(), art.humanId }.Where(t => !string.IsNullOrEmpty(t)));
+      var artTags = string.Join(",", new[] { GetTypeTag(art.typeCode), art.humanId }.Where(t => !string.IsNullOrEmpty(t)));
       var seriesTag = MakeTag(art.series);
       var seriesBtn = string.IsNullOrEmpty(seriesTag) ? "" : $" <button class='small-button series-tag-btn' data-series-tag='{EscapeHtml(seriesTag)}' onclick='window._filterToTag(\"{EscapeHtml(seriesTag)}\")' title='Show whole series'>S</button>";
       html.AppendLine($"  <div class='desc'>Tags: <my-tags>{EscapeHtml(artTags)}</my-tags></div><div class='desc'>{seriesBtn}</div>");
       var hiddenTags = string.Join(",", new[] {
         seriesTag,
-        MakeTag(art.location)
+        MakeTag(art.location),
+        art.ctDate == DateTime.MinValue || art.ctDate.Year == 1900 ? "No-Date" : art.ctDate.Year.ToString(),
+        art.errors.Count > 0 ? "error" : ""
       }.Where(t => !string.IsNullOrEmpty(t)));
       if (!string.IsNullOrEmpty(hiddenTags))
         html.AppendLine($"  <my-hidden-tags>{EscapeHtml(hiddenTags)}</my-hidden-tags>");
