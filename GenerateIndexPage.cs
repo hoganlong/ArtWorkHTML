@@ -5,11 +5,30 @@ namespace ArtWorkHTML;
 
 public partial class ArtworkHTML
 {
+  // Default destination of the index "browse" split button. To change which
+  // type page is the main click action, set this to another FileName from
+  // the ArtworkTypePages list in ArtworkHTML.cs.
+  private const string DefaultBrowsePageFileName = "artwork-wall-sculpture.html";
+
   private async Task GenerateIndexPage()
   {
+    var defaultPage = ArtworkTypePages.First(p => p.FileName == DefaultBrowsePageFileName);
+
+    var menuItems = new StringBuilder();
+    menuItems.AppendLine("                    <li role='none'><a role='menuitem' href='artwork.html?show=all'>Browse All Artworks</a></li>");
+    foreach (var p in ArtworkTypePages)
+      menuItems.AppendLine($"                    <li role='none'><a role='menuitem' href='{p.FileName}?show=all'>{EscapeHtml(p.Title)}</a></li>");
+
+    var browseButton = $@"<div class='split-button'>
+                <a href='{defaultPage.FileName}?show=all' class='nav-button split-button-main'>{EscapeHtml(defaultPage.Title)}</a>
+                <button type='button' class='nav-button split-button-toggle' aria-haspopup='true' aria-expanded='false' aria-label='Choose artwork category'>&#x25BE;</button>
+                <ul class='split-button-menu' role='menu'>
+{menuItems}                </ul>
+              </div>";
+
     var html = new StringBuilder();
     html.AppendLine(GetHtmlHeader("Keith Long Archive"));
-    html.AppendLine(@"
+    html.AppendLine($@"
     <div class='container landing-page'>
         <div class='landing-header'>
             <h1>Keith Long Archive</h1>
@@ -26,7 +45,7 @@ public partial class ArtworkHTML
             <p>We also welcome comments or questions about the archive.</p>
         </div>
         <div class='navigation'>
-            <div class='nav-button-wrap'><a href='artwork.html?show=all' class='nav-button'>Browse All Artworks</a><div class='coming-soon'>&nbsp;</div></div>
+            <div class='nav-button-wrap'>{browseButton}<div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><a href='polaroids.html?show=all' class='nav-button'>Polaroids</a><div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><a href='scans.html' class='nav-button'>Scans</a><div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><a href='sketchbooks.html' class='nav-button'>Sketchbooks</a><div class='coming-soon'>&nbsp;</div></div>
@@ -36,9 +55,68 @@ public partial class ArtworkHTML
             <div class='nav-button-wrap'><a href='statistics.html' class='nav-button'>Archive Statistics</a><div class='coming-soon'>&nbsp;</div></div>
         </div>
     </div>");
+    html.AppendLine(@"
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var toggle = document.querySelector('.split-button-toggle');
+        var menu = document.querySelector('.split-button-menu');
+        var mainBtn = document.querySelector('.split-button-main');
+        if (!toggle || !menu || !mainBtn) return;
+
+        var STORAGE_KEY = 'kla_browse_default';
+
+        // Restore previous selection if it still matches one of the menu items.
+        try {
+            var saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+            if (saved && saved.href && saved.label) {
+                var match = false;
+                menu.querySelectorAll('a[role=""menuitem""]').forEach(function(a) {
+                    if (a.getAttribute('href') === saved.href) match = true;
+                });
+                if (match) {
+                    mainBtn.setAttribute('href', saved.href);
+                    mainBtn.textContent = saved.label;
+                }
+            }
+        } catch (err) { /* ignore */ }
+
+        function closeMenu() {
+            menu.classList.remove('open');
+            toggle.setAttribute('aria-expanded', 'false');
+        }
+
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            var isOpen = menu.classList.toggle('open');
+            toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+
+        menu.querySelectorAll('a[role=""menuitem""]').forEach(function(a) {
+            a.addEventListener('click', function(e) {
+                e.preventDefault();
+                var href = this.getAttribute('href');
+                var label = this.textContent;
+                mainBtn.setAttribute('href', href);
+                mainBtn.textContent = label;
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({ href: href, label: label }));
+                } catch (err) { /* ignore */ }
+                closeMenu();
+            });
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!toggle.contains(e.target) && !menu.contains(e.target)) closeMenu();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeMenu();
+        });
+    });
+    </script>");
     html.AppendLine(GetHtmlFooter());
 
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "index.html"), html.ToString());
   }
-  
+
 }

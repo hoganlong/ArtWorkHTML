@@ -273,18 +273,87 @@ public partial class ArtworkHTML
                 </tr>");
     }
 
-    // Build artwork type detail rows
+    // Build artwork type detail rows.
+    // - Single-code per-type pages (C/D/P/S/W): the per-row browse button links
+    //   to the per-type page (e.g. artwork-canvas.html) instead of the tag-
+    //   filtered all-artworks page.
+    // - Multi-code pages (e.g. jewelry: B+N+J → artwork-jewelry.html): keep the
+    //   per-row tag-filter browse buttons AND add a rowspan cell in a new
+    //   right-most column linking to the combined page. Rows belonging to the
+    //   same multi-code page are sorted adjacent so the rowspan works.
+    var pageByCode = new Dictionary<string, ArtworkTypePage>(StringComparer.OrdinalIgnoreCase);
+    foreach (var p in ArtworkTypePages)
+      foreach (var c in p.TypeCodes)
+        pageByCode[c] = p;
+
+    ArtworkTypePage? PageFor(string? code) =>
+      !string.IsNullOrEmpty(code) && pageByCode.TryGetValue(code, out var pp) ? pp : null;
+
+    // Keep "(no type)" rows at the very end (matches the SQL CASE ordering).
+    var noTypeRows = artworkTypes.Where(r => r.Desc == "(no type)").ToList();
+    var typedRows = artworkTypes.Where(r => r.Desc != "(no type)").ToList();
+
+    // Group rows whose page has multiple codes; everyone else is a singleton.
+    // Order groups by the first member's description so the table stays
+    // mostly alphabetical, just with multi-code groups promoted to be
+    // contiguous at their first member's alphabetical position.
+    var typeGroups = typedRows
+      .GroupBy(r =>
+      {
+        var page = PageFor(r.Code);
+        return page is not null && page.TypeCodes.Length > 1
+          ? "page:" + page.FileName
+          : "solo:" + r.Desc;
+      })
+      .Select(g => g.OrderBy(r => r.Desc).ToList())
+      .OrderBy(g => g[0].Desc, StringComparer.Ordinal)
+      .ToList();
+
+    var sortedTypes = typeGroups.SelectMany(g => g).Concat(noTypeRows).ToList();
+
+    var emittedSpanForPage = new HashSet<string>();
     var artworkTypeRows = new StringBuilder();
-    foreach (var row in artworkTypes)
+    foreach (var row in sortedTypes)
     {
-      var typeBrowseTag = string.IsNullOrEmpty(row.Code) ? "" : GetTypeTag(row.Code);
-      var typeBrowse = string.IsNullOrEmpty(typeBrowseTag) || typeBrowseTag == "none" ? "" : $"<a href='artwork.html?tagtitle={typeBrowseTag}&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>browse</a>";
+      var page = PageFor(row.Code);
+      string browseLink;
+      if (page is not null && page.TypeCodes.Length == 1)
+      {
+        browseLink = $"<a href='{page.FileName}?show=all&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>browse</a>";
+      }
+      else
+      {
+        var typeBrowseTag = string.IsNullOrEmpty(row.Code) ? "" : GetTypeTag(row.Code);
+        browseLink = string.IsNullOrEmpty(typeBrowseTag) || typeBrowseTag == "none"
+          ? ""
+          : $"<a href='artwork.html?tagtitle={typeBrowseTag}&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>browse</a>";
+      }
+
+      string spanCell;
+      if (page is not null && page.TypeCodes.Length > 1)
+      {
+        if (emittedSpanForPage.Add(page.FileName))
+        {
+          var groupSize = typeGroups.First(g => PageFor(g[0].Code)?.FileName == page.FileName).Count;
+          spanCell = $"<td rowspan='{groupSize}'><a href='{page.FileName}?show=all&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>browse all {EscapeHtml(page.Title.ToLower())}</a></td>";
+        }
+        else
+        {
+          spanCell = ""; // covered by the rowspan from the first row in the group
+        }
+      }
+      else
+      {
+        spanCell = "<td></td>";
+      }
+
       artworkTypeRows.AppendLine($@"
                 <tr>
                     <td>{EscapeHtml(row.Desc)}</td>
                     <td>{row.Count}</td>
                     <td>{(row.Sold == 0 ? "" : row.Sold.ToString())}</td>
-                    <td>{typeBrowse}</td>
+                    <td>{browseLink}</td>
+                    {spanCell}
                 </tr>");
     }
 
@@ -374,7 +443,7 @@ public partial class ArtworkHTML
                 <div id='aw-type' class='stats-view' style='display:none'>
                     <table class='stats-table'>
                         <thead><tr>
-                            <th>Type</th><th>Count</th><th>Sold</th><th></th>
+                            <th>Type</th><th>Count</th><th>Sold</th><th></th><th></th>
                         </tr></thead>
                         <tbody>" + artworkTypeRows + @"</tbody>
                     </table>
