@@ -87,6 +87,7 @@ public partial class ArtworkHTML
     ArtList artList = new();
     ArtList polaroidList = new();
     ArtList sketchBookList = new();
+    ArtList scansList = new();
  //   Dictionary<int, ArtList> sketchBookLists = [];
 
     // Get all artworks from the database
@@ -222,94 +223,62 @@ public partial class ArtworkHTML
             tifBucketFiles++;
           }  
 
-          if (dir == "scans" && ext == "tif" && filename.StartsWith("KLA")) // It's a sketchbook TIF so add it to the sketchbook list
-          {
-            if (!DbSketchOnly)
-              sketchBookList.AddSketchBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
-            continue;
-          }
+          if (fullPath.EndsWith("/")) continue;
+          if (ext == "pdf") { skippedBucketFiles++; continue; }
 
-          if (fullPath.Length > 10 && fullPath[0..9] == "scans/jpg")
+          switch (dir)
           {
-            // not doing anything with scans right now, but want to keep track of how many there are in the bucket
-            if (fullPath.EndsWith('/'))
-            {
-              continue;
-            }
-            if (ext == ".pdf")
-            {
-              // should have error msg for pdf files in scans/jpg dir since we aren't expecting them, but for now just skip them and keep track of how many there are 
-              skippedBucketFiles++;
-              continue;
-            }
-            if (dir == "scans/jpg" && filename.StartsWith("KLA")) // It's a sketchbook image so add it to the sketchbook list
-            {
-              if (!DbSketchOnly)
-                sketchBookList.AddSketchBucketFile("scans/", name, ext, lastModified, true);  // add that puppy.
-              continue;
-            }
-            else  // It's a polaroid image so add it to the polaroid list
-            {
-              polaroidList.AddBucketFile("scans/", name, ext, lastModified,true);
-              continue;
-            }
-          }
-          else
-          {
-            // Just the dir ignore it.
-            if (fullPath.EndsWith("/"))
-            {
-              continue;
-            }
-            if (slashPos == -1)
-            {
-              if (ext == "tif")
+            case "scans":
+              scanBucketFiles++;
+              if (ext == "tif" && filename.StartsWith("KLA"))
               {
-                // should check if in correct (expected) location in bucket, but for now just set the state
-                artList.AddBucketFile(dir, name, ext, lastModified);
+                if (!DbSketchOnly)
+                  sketchBookList.AddSketchBucketFile("scans/", name, ext, lastModified, true);
               }
-              continue;
-            }
-            else
-            {
-              if (ext == "pdf")
+              else if (System.Text.RegularExpressions.Regex.IsMatch(name, @"^\d{4}P\d+$"))
+                polaroidList.AddBucketFile("scans/", name, ext, lastModified, true);
+              else
+                scansList.AddBucketFile("scans/", name, ext, lastModified, true);
+              break;
+
+            case "scans/jpg":
+              scanJPGBucketFiles++;
+              if (filename.StartsWith("KLA"))
               {
+                if (!DbSketchOnly)
+                  sketchBookList.AddSketchBucketFile("scans/", name, ext, lastModified, true);
+              }
+              else if (System.Text.RegularExpressions.Regex.IsMatch(name, @"^\d{4}P\d+$"))
+                polaroidList.AddBucketFile("scans/", name, ext, lastModified, true);
+              else
+                scansList.AddBucketFile("scans/", name, ext, lastModified, true);
+              break;
+
+            case "jpg":
+              if (ext == "jpg")
+                artList.AddBucketFile("", name, ext, lastModified);
+              else
+              {
+                Console.WriteLine($"Expected jpg extension but found: {ext} in file: {fullPath}");
                 skippedBucketFiles++;
-                continue;
               }
+              break;
 
-              switch (dir)
-              {
-                case "jpg":
-                  if (ext == "jpg")
-                  {
-                    // should really check if in correct (expected) location in bucket, but for now just set the state
-                    artList.AddBucketFile("", name, ext, lastModified);
-                  }
-                  else
-                  {
-                    Console.WriteLine($"Expected jpg extension but found: {ext} in file: {fullPath}");
-                    skippedBucketFiles++;
-                    continue;
-                  }
-                  break;
-                case "scans":
-                  scanBucketFiles++;
-                  break;
-                case "scans/jpg":
-                  break;
-                case "atch":
-                  atchBucketFiles++;
-                  // should really check if in correct (expected) location in bucket, but for now just set the state
-                  break;
-                case "jpg_hd":
-                  // ignore these files just stored here from photographer, not used right now.
-                  break;
-                default:
-                  Console.WriteLine($"Unknown directory: {dir} in file: {fullPath}");
-                  break;
-              }
-            }
+            case "atch":
+              atchBucketFiles++;
+              break;
+
+            case "jpg_hd":
+              break;
+
+            case "":
+              if (ext == "tif")
+                artList.AddBucketFile(dir, name, ext, lastModified);
+              break;
+
+            default:
+              Console.WriteLine($"Unknown directory: {dir} in file: {fullPath}");
+              break;
           }
         }
         request.ContinuationToken = response.NextContinuationToken;
@@ -333,144 +302,13 @@ public partial class ArtworkHTML
       Console.WriteLine($"Error: {ex.Message}");
     }
 
-    // Now generate the HTML page using the artList
-    var html = new StringBuilder();
-    #region all artwork list page
-    html.AppendLine(GetHtmlHeader("All Artworks - Keith Long Archive"));
-
-    html.AppendLine(@"
-    <div class='container'>
-        <h1 id='page-title'>All Artworks</h1>
-        <p class='subtitle'><a id='back-link' href='index.html'>← Back to Home</a></p>
-    </div>
-    <div class='page-controls'>
-        <div class='page-controls-row'>
-            <span class='page-controls-label'>Hover effects:</span>
-            <label><input type='checkbox' id='chk-thumb-hover' checked onchange='document.body.classList.toggle(""no-thumb-hover"", !this.checked)'> Thumbnail preview (p)</label>
-            <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom (z)</label>
-        </div>
-        <div class='page-controls-row'>
-            <span class='page-controls-label'>Show types:</span>
-            <span id='type-filter-checkboxes'></span>
-        </div>
-    </div>");
-    html.AppendLine($"<script>{GetTagsScript()}</script>");
-    html.AppendLine(@"<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var items = document.querySelectorAll('.gallery-item');
-        var typeSet = new Set();
-        items.forEach(function(el) {
-            var tagsEl = el.querySelector('my-tags');
-            if(!tagsEl) return;
-            var firstTag = tagsEl.textContent.split(',')[0].trim();
-            if(firstTag) typeSet.add(firstTag);
-        });
-        var container = document.getElementById('type-filter-checkboxes');
-        if (!container) return;
-
-        // All master checkbox — controls all type boxes but is not affected by them
-        var allLabel = document.createElement('label');
-        var allCb = document.createElement('input');
-        allCb.type = 'checkbox';
-        allCb.checked = true;
-        allCb.addEventListener('change', function() {
-            container.querySelectorAll('input[data-filter-type]').forEach(function(cb) {
-                cb.checked = allCb.checked;
-            });
-            filterGallery();
-        });
-        allLabel.appendChild(allCb);
-        allLabel.appendChild(document.createTextNode(' All'));
-        container.appendChild(allLabel);
-
-        Array.from(typeSet).sort().forEach(function(tag) {
-            var label = document.createElement('label');
-            var cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.checked = true;
-            cb.dataset.filterType = tag;
-            cb.addEventListener('change', filterGallery);
-            label.appendChild(cb);
-            label.appendChild(document.createTextNode(' ' + tag));
-            container.appendChild(label);
-        });
-        function filterGallery() {
-            var hidden = new Set();
-            container.querySelectorAll('input[data-filter-type]').forEach(function(cb) {
-                if (!cb.checked) hidden.add(cb.dataset.filterType);
-            });
-            items.forEach(function(el) {
-                var tagsEl = el.querySelector('my-tags');
-                var firstType = tagsEl ? tagsEl.textContent.split(',')[0].trim() : '';
-                el.style.display = (firstType && hidden.has(firstType)) ? 'none' : '';
-            });
-        }
-        // Sync checkboxes with active tags from URL/anchor/cookie
-        var tagState = window._tagState;
-        if (tagState && !tagState.hasAll && tagState.activeTags.size > 0) {
-            var typeCbs = Array.from(container.querySelectorAll('input[data-filter-type]'));
-            var hasActiveTypeTag = typeCbs.some(function(cb) { return tagState.activeTags.has(cb.dataset.filterType.toLowerCase()); });
-            if (hasActiveTypeTag) {
-                allCb.checked = false;
-                typeCbs.forEach(function(cb) {
-                    cb.checked = tagState.activeTags.has(cb.dataset.filterType.toLowerCase());
-                });
-                filterGallery();
-            } else {
-                // Non-type tags active (e.g. year) — uncheck All to signal filtered view, leave type boxes checked
-                allCb.checked = false;
-            }
-        }
-    });
-    </script>
-    <script>
-    document.addEventListener('keydown', function(e) {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
-        if (e.key === 'p' || e.key === 'P') document.getElementById('chk-thumb-hover')?.click();
-        if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-    </script>
-    <script>
-    function applyThumbSize(img) {
-        if (img.naturalWidth > img.naturalHeight * 1.4) {
-            img.style.width = Math.min(Math.round(40 * img.naturalWidth / img.naturalHeight), 220) + 'px';
-        }
-        if (img.naturalHeight > img.naturalWidth * 1.4) {
-            var largeSrc = img.dataset.largeSrc;
-            if (largeSrc && img.src !== largeSrc) {
-                img.src = largeSrc;
-                return;
-            }
-            img.style.height = Math.min(Math.round(40 * img.naturalHeight / img.naturalWidth), 120) + 'px';
-        }
-    }
-    </script>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.thumb-button').forEach(function(btn) {
-            btn.addEventListener('mouseenter', function() {
-                if (this.querySelector('.thumb-preview')) return;
-                var thumbImg = this.querySelector('img[data-large-src]');
-                if (!thumbImg) return;
-                var src = thumbImg.dataset.largeSrc || thumbImg.src;
-                if (!src) return;
-                var preview = document.createElement('img');
-                preview.className = 'thumb-preview';
-                preview.src = src;
-                this.appendChild(preview);
-            });
-        });
-    });
-    </script>
-    <div id='tag-title' class='tag-title-banner' style='display:none'></div>
-    <div class='container'>");
-
-    html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
-    foreach (var artItem in artList.artworks) // while (await reader.ReadAsync())
+    // Generate the all-artworks page plus one filtered page per artwork type.
+    // Error pre-pass: missing front/back photo flags on each artwork. Done
+    // once so the same art.errors collection is reused across the all-artworks
+    // page and the per-type pages without double-counting.
+    foreach (var artItem in artList.artworks)
     {
       Artwork art = artItem.Value;
-
       if (art.myType == ArtType.NonArtPhoto) continue;
 
       if (art.typeCode == "W" &&
@@ -482,151 +320,29 @@ public partial class ArtworkHTML
           (art.frontId == null || art.frontId.Length == 0) &&
           (art.frontFileName == null || art.frontFileName.Length == 0))
         art.errors.Add("Missing front photo");
-
-/*
-      if (art.states.HasFlag(StatesType.jpgFound))
-      {
-        Console.WriteLine("Found jpg for artwork: " + art.humanId);
-      }
-
-
-*/
-      html.AppendLine($@"<div class='gallery-item'>");
-      if ((art.states & StatesType.NoImage) == 0) // if we have an image
-      {
-        html.AppendLine($@"  <a href='{art.jpgURL}' rel='noopener noreferrer'>
-                   <img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/>
-                    </a><br/>
-                    <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
-      }
-      else
-      {
-      }
-        // Add thumbnail buttons for additional views
-        var thumbnails = new List<(string label, int[]? id)>
-        {
-          ("Front", art.frontId),
-          ("Back", art.backId),
-          ("Paper", art.paperId),
-          ("Polaroid", art.polaroidId)
-        };
-
-        var filethumbnails = new List<(string label, string[]? names)>
-        {
-          ("Front", art.frontFileName),
-          ("Back", art.backFileName)
-        };
-
-        List<string> thumbButtons = [];
-
-        bool hasMult = false;
-
-        foreach (var thumb in thumbnails)
-        {
-          if (thumb.id is not null && thumb.id.Length > 0)
-          {
-            hasMult = thumb.id.Length > 1;
-            int curNum = 1;
-            // We have at least one thumbnail for this view, so we can break out of the loop and generate buttons
-            foreach (var id in thumb.id)
-            {
-              if (id != 0)
-              {
-                var thumbUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "small");
-                var fullUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "full");
-                var largeUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "large");
-                thumbButtons.Add($"<a href='{fullUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{thumb.label}{(hasMult?" "+curNum.ToString(): "")}'><img src='{thumbUrl}' width='40' height='40' data-large-src='{largeUrl}' onload='applyThumbSize(this)' loading='lazy' /></a>");
-              }
-              curNum++;
-            }
-          }
-        }
-
-        foreach (var filethumb in filethumbnails)
-        {
-          if (filethumb.names is not null && filethumb.names.Length > 0)
-          {
-            hasMult = hasMult || filethumb.names.Length > 1;
-
-            int curNum = 1;
-            // We have at least one thumbnail for this view, so we can break out of the loop and generate buttons
-            foreach (var name in filethumb.names)
-            {
-              if (!string.IsNullOrEmpty(name))
-              {
-                var url = art.MakeJPGURL(name);
-                
-                thumbButtons.Add($"<a href='{url}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{filethumb.label}(L){(hasMult?" "+curNum.ToString(): "")}'><img src='{url}' width='40' height='40' data-large-src='{url}' onload='applyThumbSize(this)' loading='lazy' /></a>");
-              }
-              curNum++;
-            }
-          }
-        }
-
-
-        if (thumbButtons.Count != 0)
-        {
-          html.AppendLine($"  <div class='thumb-buttons'>");
-          html.AppendLine($"    {string.Join(" ", thumbButtons)}");
-          html.AppendLine($"  </div>");
-        }
-     
-      html.AppendLine($"  <div class='desc item-description'>");
-      html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
-      html.AppendLine($"    {BlankOrWithBR(DateOrEmpty(art.ctDate), "  ")}");
-      html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
-      html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  "," inches")}");
-      html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: "," inches")}");
-      html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
-      html.AppendLine($"  </div>");
-      var artTags = string.Join(",", new[] { GetTypeTag(art.typeCode), art.humanId }.Where(t => !string.IsNullOrEmpty(t)));
-      var seriesTag = MakeTag(art.series);
-      var seriesBtn = string.IsNullOrEmpty(seriesTag) ? "" : $" <button class='small-button series-tag-btn' data-series-tag='{EscapeHtml(seriesTag)}' onclick='window._filterToTag(\"{EscapeHtml(seriesTag)}\")' title='Show whole series'>S</button>";
-      html.AppendLine($"  <div class='desc'>Tags: <my-tags>{EscapeHtml(artTags)}</my-tags></div><div class='desc'>{seriesBtn}</div>");
-      var hiddenTags = string.Join(",", new[] {
-        seriesTag,
-        MakeTag(art.location),
-        art.ctDate == DateTime.MinValue || art.ctDate.Year == 1900 ? "No-Date" : art.ctDate.Year.ToString(),
-        art.errors.Count > 0 ? "error" : ""
-      }.Where(t => !string.IsNullOrEmpty(t)));
-      if (!string.IsNullOrEmpty(hiddenTags))
-        html.AppendLine($"  <my-hidden-tags>{EscapeHtml(hiddenTags)}</my-hidden-tags>");
-
-      html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>", art.errors)}</div>");
-      foreach (var err in art.errors)
-      {
-        var key = err.StartsWith("Duplicate humanId") ? "Duplicate humanId" : err;
-        _errorCounts[key] = _errorCounts.TryGetValue(key, out int c) ? c + 1 : 1;
-      }
-
-      if (art.states.HasFlag(StatesType.noDB))
-        html.AppendLine($"<div class='desc'>Bucket name: {art.fileName}<br/></div>");
-
-      if (art.states.HasFlag(StatesType.jpgFound))
-        html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
-      if (art.states.HasFlag(StatesType.tifFound))
-        html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
-
-      html.AppendLine($"</div>  <!-- gallery item -->");
     }
 
-    html.AppendLine(@"</div>");
-    html.AppendLine(GetLightboxHtml());
-    html.AppendLine($"<script>{GetLightboxScript()}</script>");
-    html.AppendLine(GetHtmlFooter());
+    await WriteArtworkGalleryPage(
+      "artwork.html",
+      "All Artworks",
+      artList.artworks.Values,
+      includeTypeFilter: true,
+      trackErrors: true);
 
-    if (_errorCounts.Count > 0)
+    foreach (var typePage in ArtworkTypePages)
     {
-      html.AppendLine("<!--");
-      html.AppendLine("=== Artwork Page Errors ===");
-      foreach (var kvp in _errorCounts.OrderByDescending(x => x.Value))
-        html.AppendLine($"  {kvp.Value,4}x  {kvp.Key}");
-      html.AppendLine("-->");
+      var filtered = artList.artworks.Values
+        .Where(a => !string.IsNullOrEmpty(a.typeCode) && typePage.TypeCodes.Contains(a.typeCode));
+      await WriteArtworkGalleryPage(
+        typePage.FileName,
+        $"Artwork - {typePage.Title}",
+        filtered,
+        includeTypeFilter: false,
+        trackErrors: false);
+      Console.WriteLine($"  ✓ {typePage.FileName}");
     }
 
-    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "artwork.html"), html.ToString());
-
-    #endregion
+    var html = new StringBuilder();
 
     #region polaroid list page
     html.Clear();
@@ -695,6 +411,8 @@ public partial class ArtworkHTML
 
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "polaroids.html"), html.ToString());
     #endregion
+
+    await GenerateScansPage(scansList);
 
     #region sketchbook list pages
     var lastSketchbookNumber = -1;
@@ -971,4 +689,291 @@ public partial class ArtworkHTML
     #endregion
 
     }
+
+  // Renders one gallery page (artwork.html or one of the per-type artwork-*.html
+  // pages). The all-artworks page sets includeTypeFilter=true to keep its
+  // "Show types" checkbox row, and trackErrors=true to populate _errorCounts
+  // (and emit the trailing HTML comment summary). Per-type pages opt out of
+  // both — they reuse the same art.errors values populated by the pre-pass.
+  private async Task WriteArtworkGalleryPage(
+    string outputFileName,
+    string headingText,
+    IEnumerable<Artwork> artworks,
+    bool includeTypeFilter,
+    bool trackErrors)
+  {
+    var html = new StringBuilder();
+    html.AppendLine(GetHtmlHeader($"{headingText} - Keith Long Archive"));
+
+    html.AppendLine($@"
+    <div class='container'>
+        <h1 id='page-title'>{EscapeHtml(headingText)}</h1>
+        <p class='subtitle'><a id='back-link' href='index.html'>← Back to Home</a></p>
+    </div>
+    <div class='page-controls'>
+        <div class='page-controls-row'>
+            <span class='page-controls-label'>Hover effects:</span>
+            <label><input type='checkbox' id='chk-thumb-hover' checked onchange='document.body.classList.toggle(""no-thumb-hover"", !this.checked)'> Thumbnail preview (p)</label>
+            <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom (z)</label>
+        </div>");
+    if (includeTypeFilter)
+    {
+      html.AppendLine(@"        <div class='page-controls-row'>
+            <span class='page-controls-label'>Show types:</span>
+            <span id='type-filter-checkboxes'></span>
+        </div>");
+    }
+    html.AppendLine(@"    </div>");
+    html.AppendLine($"<script>{GetTagsScript()}</script>");
+
+    if (includeTypeFilter)
+    {
+      html.AppendLine(@"<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var items = document.querySelectorAll('.gallery-item');
+        var typeSet = new Set();
+        items.forEach(function(el) {
+            var tagsEl = el.querySelector('my-tags');
+            if(!tagsEl) return;
+            var firstTag = tagsEl.textContent.split(',')[0].trim();
+            if(firstTag) typeSet.add(firstTag);
+        });
+        var container = document.getElementById('type-filter-checkboxes');
+        if (!container) return;
+
+        // All master checkbox — controls all type boxes but is not affected by them
+        var allLabel = document.createElement('label');
+        var allCb = document.createElement('input');
+        allCb.type = 'checkbox';
+        allCb.checked = true;
+        allCb.addEventListener('change', function() {
+            container.querySelectorAll('input[data-filter-type]').forEach(function(cb) {
+                cb.checked = allCb.checked;
+            });
+            filterGallery();
+        });
+        allLabel.appendChild(allCb);
+        allLabel.appendChild(document.createTextNode(' All'));
+        container.appendChild(allLabel);
+
+        Array.from(typeSet).sort().forEach(function(tag) {
+            var label = document.createElement('label');
+            var cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = true;
+            cb.dataset.filterType = tag;
+            cb.addEventListener('change', filterGallery);
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(' ' + tag));
+            container.appendChild(label);
+        });
+        function filterGallery() {
+            var hidden = new Set();
+            container.querySelectorAll('input[data-filter-type]').forEach(function(cb) {
+                if (!cb.checked) hidden.add(cb.dataset.filterType);
+            });
+            items.forEach(function(el) {
+                var tagsEl = el.querySelector('my-tags');
+                var firstType = tagsEl ? tagsEl.textContent.split(',')[0].trim() : '';
+                el.style.display = (firstType && hidden.has(firstType)) ? 'none' : '';
+            });
+        }
+        // Sync checkboxes with active tags from URL/anchor/cookie
+        var tagState = window._tagState;
+        if (tagState && !tagState.hasAll && tagState.activeTags.size > 0) {
+            var typeCbs = Array.from(container.querySelectorAll('input[data-filter-type]'));
+            var hasActiveTypeTag = typeCbs.some(function(cb) { return tagState.activeTags.has(cb.dataset.filterType.toLowerCase()); });
+            if (hasActiveTypeTag) {
+                allCb.checked = false;
+                typeCbs.forEach(function(cb) {
+                    cb.checked = tagState.activeTags.has(cb.dataset.filterType.toLowerCase());
+                });
+                filterGallery();
+            } else {
+                // Non-type tags active (e.g. year) — uncheck All to signal filtered view, leave type boxes checked
+                allCb.checked = false;
+            }
+        }
+    });
+    </script>");
+    }
+
+    html.AppendLine(@"<script>
+    document.addEventListener('keydown', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
+        if (e.key === 'p' || e.key === 'P') document.getElementById('chk-thumb-hover')?.click();
+        if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    </script>
+    <script>
+    function applyThumbSize(img) {
+        if (img.naturalWidth > img.naturalHeight * 1.4) {
+            img.style.width = Math.min(Math.round(40 * img.naturalWidth / img.naturalHeight), 220) + 'px';
+        }
+        if (img.naturalHeight > img.naturalWidth * 1.4) {
+            var largeSrc = img.dataset.largeSrc;
+            if (largeSrc && img.src !== largeSrc) {
+                img.src = largeSrc;
+                return;
+            }
+            img.style.height = Math.min(Math.round(40 * img.naturalHeight / img.naturalWidth), 120) + 'px';
+        }
+    }
+    </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.thumb-button').forEach(function(btn) {
+            btn.addEventListener('mouseenter', function() {
+                if (this.querySelector('.thumb-preview')) return;
+                var thumbImg = this.querySelector('img[data-large-src]');
+                if (!thumbImg) return;
+                var src = thumbImg.dataset.largeSrc || thumbImg.src;
+                if (!src) return;
+                var preview = document.createElement('img');
+                preview.className = 'thumb-preview';
+                preview.src = src;
+                this.appendChild(preview);
+            });
+        });
+    });
+    </script>
+    <div id='tag-title' class='tag-title-banner' style='display:none'></div>
+    <div class='container'>");
+
+    html.AppendLine("<div class='gallery' style='font-size: x-small;'>");
+    foreach (var art in artworks)
+    {
+      if (art.myType == ArtType.NonArtPhoto) continue;
+
+      html.AppendLine($@"<div class='gallery-item'>");
+      if ((art.states & StatesType.NoImage) == 0)
+      {
+        html.AppendLine($@"  <a href='{art.jpgURL}' rel='noopener noreferrer'>
+                   <img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/>
+                    </a><br/>
+                    <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
+      }
+
+      var thumbnails = new List<(string label, int[]? id)>
+      {
+        ("Front", art.frontId),
+        ("Back", art.backId),
+        ("Paper", art.paperId),
+        ("Polaroid", art.polaroidId)
+      };
+
+      var filethumbnails = new List<(string label, string[]? names)>
+      {
+        ("Front", art.frontFileName),
+        ("Back", art.backFileName)
+      };
+
+      List<string> thumbButtons = [];
+      bool hasMult = false;
+
+      foreach (var thumb in thumbnails)
+      {
+        if (thumb.id is not null && thumb.id.Length > 0)
+        {
+          hasMult = thumb.id.Length > 1;
+          int curNum = 1;
+          foreach (var id in thumb.id)
+          {
+            if (id != 0)
+            {
+              var thumbUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "small");
+              var fullUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "full");
+              var largeUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "large");
+              thumbButtons.Add($"<a href='{fullUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{thumb.label}{(hasMult?" "+curNum.ToString(): "")}'><img src='{thumbUrl}' width='40' height='40' data-large-src='{largeUrl}' onload='applyThumbSize(this)' loading='lazy' /></a>");
+            }
+            curNum++;
+          }
+        }
+      }
+
+      foreach (var filethumb in filethumbnails)
+      {
+        if (filethumb.names is not null && filethumb.names.Length > 0)
+        {
+          hasMult = hasMult || filethumb.names.Length > 1;
+          int curNum = 1;
+          foreach (var name in filethumb.names)
+          {
+            if (!string.IsNullOrEmpty(name))
+            {
+              var url = art.MakeJPGURL(name);
+              thumbButtons.Add($"<a href='{url}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{filethumb.label}(L){(hasMult?" "+curNum.ToString(): "")}'><img src='{url}' width='40' height='40' data-large-src='{url}' onload='applyThumbSize(this)' loading='lazy' /></a>");
+            }
+            curNum++;
+          }
+        }
+      }
+
+      if (thumbButtons.Count != 0)
+      {
+        html.AppendLine($"  <div class='thumb-buttons'>");
+        html.AppendLine($"    {string.Join(" ", thumbButtons)}");
+        html.AppendLine($"  </div>");
+      }
+
+      html.AppendLine($"  <div class='desc item-description'>");
+      html.AppendLine($"    {BlankOrWithBR(art.title, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(DateOrEmpty(art.ctDate), "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
+      html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  "," inches")}");
+      html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: "," inches")}");
+      html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
+      html.AppendLine($"  </div>");
+      var artTags = string.Join(",", new[] { GetTypeTag(art.typeCode), art.humanId }.Where(t => !string.IsNullOrEmpty(t)));
+      var seriesTag = MakeTag(art.series);
+      var seriesBtn = string.IsNullOrEmpty(seriesTag) ? "" : $" <button class='small-button series-tag-btn' data-series-tag='{EscapeHtml(seriesTag)}' onclick='window._filterToTag(\"{EscapeHtml(seriesTag)}\")' title='Show whole series'>S</button>";
+      html.AppendLine($"  <div class='desc'>Tags: <my-tags>{EscapeHtml(artTags)}</my-tags></div><div class='desc'>{seriesBtn}</div>");
+      var hiddenTags = string.Join(",", new[] {
+        seriesTag,
+        MakeTag(art.location),
+        art.ctDate == DateTime.MinValue || art.ctDate.Year == 1900 ? "No-Date" : art.ctDate.Year.ToString(),
+        art.errors.Count > 0 ? "error" : ""
+      }.Where(t => !string.IsNullOrEmpty(t)));
+      if (!string.IsNullOrEmpty(hiddenTags))
+        html.AppendLine($"  <my-hidden-tags>{EscapeHtml(hiddenTags)}</my-hidden-tags>");
+
+      html.AppendLine($"<div class='desc' style='color:red;'>{String.Join("<br/>", art.errors)}</div>");
+
+      if (trackErrors)
+      {
+        foreach (var err in art.errors)
+        {
+          var key = err.StartsWith("Duplicate humanId") ? "Duplicate humanId" : err;
+          _errorCounts[key] = _errorCounts.TryGetValue(key, out int c) ? c + 1 : 1;
+        }
+      }
+
+      if (art.states.HasFlag(StatesType.noDB))
+        html.AppendLine($"<div class='desc'>Bucket name: {art.fileName}<br/></div>");
+
+      if (art.states.HasFlag(StatesType.jpgFound))
+        html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
+      if (art.states.HasFlag(StatesType.tifFound))
+        html.AppendLine($"<span class='heavy-check-mark'>&#x2705;</span>");
+
+      html.AppendLine($"</div>  <!-- gallery item -->");
+    }
+
+    html.AppendLine(@"</div>");
+    html.AppendLine(GetLightboxHtml());
+    html.AppendLine($"<script>{GetLightboxScript()}</script>");
+    html.AppendLine(GetHtmlFooter());
+
+    if (trackErrors && _errorCounts.Count > 0)
+    {
+      html.AppendLine("<!--");
+      html.AppendLine("=== Artwork Page Errors ===");
+      foreach (var kvp in _errorCounts.OrderByDescending(x => x.Value))
+        html.AppendLine($"  {kvp.Value,4}x  {kvp.Key}");
+      html.AppendLine("-->");
+    }
+
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, outputFileName), html.ToString());
+  }
 }

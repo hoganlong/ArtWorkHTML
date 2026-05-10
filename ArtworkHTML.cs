@@ -98,6 +98,21 @@ public partial class ArtworkHTML
     return TypeTags.TryGetValue(typeCode, out var tag) ? tag : "none";
   }
 
+  // Per-type artwork pages — add an entry here to generate a new filtered
+  // page (e.g. artwork-canvas.html). TypeCodes lists which artwork.type codes
+  // feed into the page; multiple codes are combined onto one page.
+  private record ArtworkTypePage(string FileName, string Title, string[] TypeCodes);
+
+  private static readonly List<ArtworkTypePage> ArtworkTypePages = new()
+  {
+    new("artwork-canvas.html",             "Canvas",                 new[] { "C" }),
+    new("artwork-drawing.html",            "Drawing",                new[] { "D" }),
+    new("artwork-jewelry.html",            "Jewelry",                new[] { "B", "N", "J" }),
+    new("artwork-painting-noncanvas.html", "Painting (Non-Canvas)",  new[] { "P" }),
+    new("artwork-sculpture-nonwall.html",  "Sculpture (Non-Wall)",   new[] { "S" }),
+    new("artwork-wall-sculpture.html",     "Wall Hanging Sculpture", new[] { "W" }),
+  };
+
   private static string MakeTag(string? s)
   {
     if (string.IsNullOrEmpty(s)) return "";
@@ -267,6 +282,7 @@ public partial class ArtworkHTML
     Console.WriteLine("  ✓ index.html - Landing page");
     Console.WriteLine("  ✓ statistics.html - Archive statistics");
     Console.WriteLine("  ✓ artwork.html - Complete artwork list");
+    Console.WriteLine("  ✓ scans.html - Scan files not in database");
     Console.WriteLine("  ✓ copyright.html");
     Console.WriteLine("  ✓ howisitmade.html");
     Console.WriteLine("  ✓ credits.html");
