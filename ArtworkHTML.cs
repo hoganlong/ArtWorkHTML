@@ -110,7 +110,7 @@ public partial class ArtworkHTML
     new("artwork-jewelry.html",            "Jewelry",                new[] { "B", "N", "J" }),
     new("artwork-painting-noncanvas.html", "Painting (Non-Canvas)",  new[] { "P" }),
     new("artwork-sculpture-nonwall.html",  "Sculpture (Non-Wall)",   new[] { "S" }),
-    new("artwork-wall-sculpture.html",     "Wall Hanging Sculpture", new[] { "W" }),
+    new("artwork-wall-sculpture.html",     "Wall Hanging Sculptures", new[] { "W" }),
   };
 
   private static string MakeTag(string? s)

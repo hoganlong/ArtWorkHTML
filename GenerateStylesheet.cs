@@ -236,6 +236,70 @@ h1 {
     cursor: default;
 }
 
+.split-button {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+}
+
+.split-button-main {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.split-button-toggle {
+    padding: 15px 12px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-left: 1px solid rgba(255,255,255,0.3);
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9em;
+    line-height: 1;
+    transition: background 0.3s;
+}
+
+.split-button-toggle:hover,
+.split-button-toggle[aria-expanded='true'] {
+    background: #2980b9;
+}
+
+.split-button-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin: 4px 0 0 0;
+    padding: 4px 0;
+    list-style: none;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+    min-width: 100%;
+    z-index: 100;
+}
+
+.split-button-menu.open {
+    display: block;
+}
+
+.split-button-menu a {
+    display: block;
+    padding: 10px 18px;
+    color: #2c3e50;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.split-button-menu a:hover,
+.split-button-menu a:focus {
+    background: #f0f4f8;
+    color: #2980b9;
+}
+
 .sketchbook-nav {
     display: flex;
     align-items: center;
