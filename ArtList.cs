@@ -209,7 +209,7 @@ namespace ArtWorkHTML
       this.backFileName = backFileName;
       this.frontFileName = frontFileName; 
 
-      if (string.IsNullOrEmpty(iFileName))
+      if (string.IsNullOrEmpty(iFileName) || iFileName == "<<NO BUCKET>>")
       { // set no image state if we don't have an image file name
         this.states |= StatesType.NoImage;
         // Use Front image as fallback if available
@@ -217,7 +217,8 @@ namespace ArtWorkHTML
         {
           this.states &= ~StatesType.NoImage;
           jpgURL = $"{baseURL}atch/artwork_{frontId[0]}_large.jpg";
-          this.errors.Add("Bucket image not found");
+          if (iFileName != "<<NO BUCKET>>")
+            this.errors.Add("Bucket image not found");
         }
       }
       else
@@ -242,11 +243,12 @@ namespace ArtWorkHTML
       this.artworkID = artworkID;
       this.pubNotes = pubNotes;
       this.fileName = fileName;
-      if (string.IsNullOrEmpty(fileName))
+      if (string.IsNullOrEmpty(fileName) || fileName == "<<NO BUCKET>>")
       { // set no image state if we don't have an image file name
         this.humanId = $"KLA_{sketchbookNumber}_{pageNumber}";
         this.states |= StatesType.NoImage;
-        this.errors.Add("Bucket image not found");
+        if (fileName != "<<NO BUCKET>>")
+          this.errors.Add("Bucket image not found");
       }
       else
       { // Remove no image state if we have an image file name

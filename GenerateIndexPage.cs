@@ -28,6 +28,7 @@ public partial class ArtworkHTML
         <div class='navigation'>
             <div class='nav-button-wrap'><a href='artwork.html?show=all' class='nav-button'>Browse All Artworks</a><div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><a href='polaroids.html?show=all' class='nav-button'>Polaroids</a><div class='coming-soon'>&nbsp;</div></div>
+            <div class='nav-button-wrap'><a href='scans.html' class='nav-button'>Scans</a><div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><a href='sketchbooks.html' class='nav-button'>Sketchbooks</a><div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><div class='nav-button nav-button-soon'>Shows</div><div class='coming-soon'>coming soon</div></div>
             <div class='nav-button-wrap'><div class='nav-button nav-button-soon'>Media</div><div class='coming-soon'>coming soon</div></div>
