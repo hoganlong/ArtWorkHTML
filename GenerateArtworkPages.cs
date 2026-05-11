@@ -30,7 +30,7 @@ public partial class ArtworkHTML
             (ai.view LIKE 'Back%' OR
              ai.view LIKE 'Front%' OR
              ai.view LIKE 'Paper%' OR
-             ai.view LIKE 'Polaroid%')
+             ai.view LIKE 'Polaroid%')  -- uploaded Polaroid is not used anymore should be removed.
             and URL is null 
         ), imgGroup as 
         (
@@ -57,15 +57,17 @@ public partial class ArtworkHTML
           ai_polaroid.ids as polaroid_id, -- 15
           diri_back.dirimgs as back_imgs, -- 16  
           diri_front.dirimgs as front_imgs, -- 17
-          t.code, t.description as type_desc -- 18, 19
+          diri_polaroid.dirimgs AS polaroid_imgs,  -- 18
+          t.code, t.description as type_desc -- 19, 20
         FROM artwork a
         LEFT JOIN artwork_type t ON a.type_id ->> 0 = t.airtable_id
         LEFT JOIN imgGroup ai_back ON a.airtable_id = ai_back.artwork_id AND ai_back.lview    ='Back'
         LEFT JOIN imgGroup ai_front ON a.airtable_id = ai_front.artwork_id AND ai_front.lview ='Fron'
         LEFT JOIN imgGroup ai_paper ON a.airtable_id = ai_paper.artwork_id AND ai_paper.lview ='Pape'
-        LEFT JOIN imgGroup ai_polaroid ON a.airtable_id = ai_polaroid.artwork_id AND ai_polaroid.lview ='Pola'
+        LEFT JOIN imgGroup ai_polaroid ON a.airtable_id = ai_polaroid.artwork_id AND ai_polaroid.lview ='Pola'  -- not used anymore should be removed
         LEFT JOIN dirimgGroup diri_back ON a.airtable_id = diri_back.artwork_id AND diri_back.lview    ='Back'
         LEFT JOIN dirimgGroup diri_front ON a.airtable_id = diri_front.artwork_id AND diri_front.lview ='Fron'
+        LEFT JOIN dirimgGroup diri_polaroid ON a.airtable_id = diri_polaroid.artwork_id AND diri_polaroid.lview ='Pola'
         ORDER BY a.human_readable_id, a.create_dt ASC NULLS last";
 
     const string photoSQL = @"
@@ -110,6 +112,7 @@ public partial class ArtworkHTML
 
       var backFileName = reader.IsDBNull(16) ? null : reader.GetString(16).Split(',').Select(s => s.Trim()).ToArray();
       var frontFileName = reader.IsDBNull(17) ? null : reader.GetString(17).Split(',').Select(s => s.Trim()).ToArray();
+      var polaroidFileName = reader.IsDBNull(18) ? null : reader.GetString(18).Split(',').Select(s => s.Trim()).ToArray();
 
 
       Artwork artwork = new(reader.GetInt32(0).ToString(), reader.IsDBNull(1) ? "" : reader.GetString(1),
@@ -118,8 +121,8 @@ public partial class ArtworkHTML
           reader.IsDBNull(6) ? "" : reader.GetString(6), reader.IsDBNull(7) ? "" : reader.GetString(7),
           reader.IsDBNull(8) ? "" : reader.GetString(8), reader.IsDBNull(9) ? "" : reader.GetString(9),
           reader.IsDBNull(10) ? "" : reader.GetString(10), reader.IsDBNull(11) ? "" : reader.GetString(11),
-          reader.IsDBNull(18) ? "" : reader.GetString(18),
-          backId, frontId, paperId, polaroidId,backFileName, frontFileName);  
+          reader.IsDBNull(19) ? "" : reader.GetString(19),
+          backId, frontId, paperId, polaroidId,backFileName, frontFileName, polaroidFileName);  
 
       artList.AddArtwork(artwork);
     } // while reader.ReadAsync()
@@ -871,7 +874,8 @@ public partial class ArtworkHTML
       var filethumbnails = new List<(string label, string[]? names)>
       {
         ("Front", art.frontFileName),
-        ("Back", art.backFileName)
+        ("Back", art.backFileName),
+        ("Polaroid", art.polaroidFileName)
       };
 
       List<string> thumbButtons = [];
