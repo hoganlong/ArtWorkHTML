@@ -25,10 +25,9 @@ public partial class ArtworkHTML
                 COUNT(*) as total_artworks,
                 COUNT(DISTINCT series) as total_series,
                 COUNT(DISTINCT CASE WHEN location IS NOT NULL AND TRIM(location) != '' AND LOWER(TRIM(location)) != 'sold' THEN location END) as total_locations,
-                MIN(create_dt) as earliest_date,
-                MAX(create_dt) as latest_date
-            FROM artwork
-            WHERE create_dt IS NOT NULL and EXTRACT(YEAR FROM create_dt) > 1900";
+                MIN(create_dt) FILTER (WHERE EXTRACT(YEAR FROM create_dt) > 1900) as earliest_date,
+                MAX(create_dt) FILTER (WHERE EXTRACT(YEAR FROM create_dt) > 1900) as latest_date
+            FROM artwork";
 
   const string sketchStatsSQL = @"
             SELECT
@@ -49,9 +48,13 @@ public partial class ArtworkHTML
                 COUNT(DISTINCT NULLIF(TRIM(series), '')) as series_count,
                 COUNT(*) FILTER (WHERE sold IS NOT NULL) as sold_count
             FROM artwork
-            WHERE create_dt IS NOT NULL AND EXTRACT(YEAR FROM create_dt) >= 1900
+            WHERE create_dt IS NOT NULL AND EXTRACT(YEAR FROM create_dt) >= 1899
             GROUP BY EXTRACT(YEAR FROM create_dt)
-            ORDER BY CASE WHEN EXTRACT(YEAR FROM create_dt) = 1900 THEN 9999 ELSE EXTRACT(YEAR FROM create_dt) END ASC";
+            ORDER BY CASE
+                WHEN EXTRACT(YEAR FROM create_dt) = 1899 THEN 9998
+                WHEN EXTRACT(YEAR FROM create_dt) = 1900 THEN 9999
+                ELSE EXTRACT(YEAR FROM create_dt)
+              END ASC";
 
   const string artworkSeriesSQL = @"
            SELECT
@@ -221,11 +224,19 @@ public partial class ArtworkHTML
     var artworkYearRows = new StringBuilder();
     foreach (var row in artworkYears)
     {
-      bool clearDates = row.Year == 1900; // Assuming 1900 is used as a placeholder for unknown years
-      string yearDisplay = clearDates ? "Unknown" : row.Year.ToString();
+      // 1900 is the placeholder for "year unknown"; 1899 is the placeholder
+      // for "year not yet entered". Both suppress the start/end-date columns
+      // and get a friendly label.
+      bool clearDates = row.Year == 1900 || row.Year == 1899;
+      string yearDisplay = row.Year switch
+      {
+        1900 => "Unknown",
+        1899 => "Not yet entered",
+        _ => row.Year.ToString()
+      };
       string yearSeriesDisplay = row.SeriesCount == 0 ? "" : row.SeriesCount.ToString();
       string yearSoldDisplay = row.Sold == 0 ? "" : row.Sold.ToString();
-      string yearBrowseTag = clearDates ? "No-Date" : row.Year.ToString();
+      string yearBrowseTag = row.Year == 1900 ? "No-Date" : row.Year.ToString();
       string yearBrowse = $"<a href='artwork.html?tagtitle={yearBrowseTag}&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>browse</a>";
       artworkYearRows.AppendLine($@"
                 <tr>
