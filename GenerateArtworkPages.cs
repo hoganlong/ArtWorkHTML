@@ -230,6 +230,10 @@ public partial class ArtworkHTML
           {
             case "scans":
               scanBucketFiles++;
+              // If the DB has an artwork referencing this scan file
+              // (FileName = "scans/<name>"), treat it as a regular artwork
+              // hit and skip sketchbook/polaroid/scans-page categorisation.
+              if (artList.TryAttachBucketFile(name, ext, "scans/") != null) break;
               if (ext == "tif" && filename.StartsWith("KLA"))
               {
                 if (!DbSketchOnly)
@@ -243,6 +247,7 @@ public partial class ArtworkHTML
 
             case "scans/jpg":
               scanJPGBucketFiles++;
+              if (artList.TryAttachBucketFile(name, ext, "scans/") != null) break;
               if (filename.StartsWith("KLA"))
               {
                 if (!DbSketchOnly)

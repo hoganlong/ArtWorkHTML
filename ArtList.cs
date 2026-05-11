@@ -128,6 +128,29 @@ namespace ArtWorkHTML
       }
       return artwork;
     }
+
+    // Try to match a bucket file to an existing DB artwork whose FileName is
+    // "<dbPrefix><name>" (e.g. "scans/<name>"), or matches a back/front filename.
+    // Returns the matched artwork with its tif/jpg-found state flipped, or null
+    // if no match. Unlike AddBucketFile this does NOT create a noDB entry on
+    // miss — callers can fall through to other categorisation when null.
+    public Artwork? TryAttachBucketFile(string name, string ext, string dbPrefix)
+    {
+      var matchName = dbPrefix + name;
+      var listElement = artworks.FirstOrDefault(x => x.Value.fileName == matchName);
+      if (listElement.Key == null)
+        listElement = artworks.Where(x => x.Value.backFileName != null)
+                              .FirstOrDefault(x => x.Value.backFileName!.Any(f => f == name));
+      if (listElement.Key == null)
+        listElement = artworks.Where(x => x.Value.frontFileName != null)
+                              .FirstOrDefault(x => x.Value.frontFileName!.Any(f => f == name));
+      if (listElement.Key == null) return null;
+
+      var artwork = listElement.Value;
+      if (ext == "jpg") artwork.states |= StatesType.jpgFound;
+      else if (ext == "tif") artwork.states |= StatesType.tifFound;
+      return artwork;
+    }
   } // ArtList
   
   public class Artwork
@@ -224,8 +247,20 @@ namespace ArtWorkHTML
       else
       { // Remove no image state if we have an image file name
         this.states &= ~StatesType.NoImage;
+        // Artworks stored as "scans/<basename>" live in the S3 scans/ directory.
+        // The TIF lives at scans/<basename>.tif (baseURL + iFileName + ".tif" already
+        // produces that), but the JPG sits at scans/jpg/<basename>.jpg, not the
+        // default jpg/<filename>.jpg location.
         tifURL = baseURL + iFileName + ".tif";
-        jpgURL = MakeJPGURL(iFileName);
+        if (iFileName.StartsWith("scans/", StringComparison.OrdinalIgnoreCase))
+        {
+          var basename = iFileName.Substring("scans/".Length);
+          jpgURL = baseURL + "scans/jpg/" + basename + ".jpg";
+        }
+        else
+        {
+          jpgURL = MakeJPGURL(iFileName);
+        }
       }
     }
 
