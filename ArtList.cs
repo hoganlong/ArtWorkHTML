@@ -95,10 +95,13 @@ namespace ArtWorkHTML
       var listElement = artworks.FirstOrDefault(x => x.Value.fileName == name);
       if (listElement.Key == null)
         listElement = artworks.Where(x => x.Value.backFileName != null)
-                              .FirstOrDefault(x => x.Value.backFileName!.Any(f => f == name));
+                              .FirstOrDefault(x => x.Value.backFileName!.Any(f => f == name || f.EndsWith("/" + name)));
       if (listElement.Key == null)
         listElement = artworks.Where(x => x.Value.frontFileName != null)
-                              .FirstOrDefault(x => x.Value.frontFileName!.Any(f => f == name));
+                              .FirstOrDefault(x => x.Value.frontFileName!.Any(f => f == name || f.EndsWith("/" + name)));
+      if (listElement.Key == null)
+        listElement = artworks.Where(x => x.Value.polaroidFileName != null)
+                              .FirstOrDefault(x => x.Value.polaroidFileName!.Any(f => f == name || f.EndsWith("/" + name)));
       Artwork artwork = new Artwork(dir,name,removeServerError);
 
       if (listElement.Key == null)
@@ -140,10 +143,13 @@ namespace ArtWorkHTML
       var listElement = artworks.FirstOrDefault(x => x.Value.fileName == matchName);
       if (listElement.Key == null)
         listElement = artworks.Where(x => x.Value.backFileName != null)
-                              .FirstOrDefault(x => x.Value.backFileName!.Any(f => f == name));
+                              .FirstOrDefault(x => x.Value.backFileName!.Any(f => f == name || f.EndsWith("/" + name)));
       if (listElement.Key == null)
         listElement = artworks.Where(x => x.Value.frontFileName != null)
-                              .FirstOrDefault(x => x.Value.frontFileName!.Any(f => f == name));
+                              .FirstOrDefault(x => x.Value.frontFileName!.Any(f => f == name || f.EndsWith("/" + name)));
+      if (listElement.Key == null)
+        listElement = artworks.Where(x => x.Value.polaroidFileName != null)
+                              .FirstOrDefault(x => x.Value.polaroidFileName!.Any(f => f == name || f.EndsWith("/" + name)));
       if (listElement.Key == null) return null;
 
       var artwork = listElement.Value;
@@ -195,6 +201,7 @@ namespace ArtWorkHTML
     // Artwork filenames for different views
     public string[]? backFileName = null;
     public string[]? frontFileName = null;
+    public string[]? polaroidFileName = null;
 
     public StatesType states=StatesType.NoImage;
     public bool hide = false;
@@ -205,12 +212,20 @@ namespace ArtWorkHTML
 
     public string MakeJPGURL(string filename)
     {
-      return $"{baseURL}jpg/{filename}.jpg";
+      if (filename.StartsWith("scans/jpg", StringComparison.OrdinalIgnoreCase))
+      {
+        return $"{baseURL}{filename}.jpg";
+      }
+      else
+      {
+        return $"{baseURL}jpg/{filename}.jpg";
+      }
     }
 
 
     public Artwork(string id, string iFileName, string title, string series, DateTime ctDate, string medium,string dimensions, string foldedDimensions, string location, string notes, string humanId, 
-       string image_ids,string typeCode, int[]? backId = null, int[]? frontId = null, int[]? paperId = null, int[]? polaroidId = null, string[]? backFileName = null, string[]? frontFileName = null )
+       string image_ids,string typeCode,
+       int[]? backId = null, int[]? frontId = null, int[]? paperId = null, int[]? polaroidId = null, string[]? backFileName = null, string[]? frontFileName = null, string[]? polaroidFileName = null)
     {
       this.id = id ?? "";
       this.fileName = iFileName ?? "";
@@ -231,6 +246,7 @@ namespace ArtWorkHTML
       this.polaroidId = polaroidId;
       this.backFileName = backFileName;
       this.frontFileName = frontFileName; 
+      this.polaroidFileName = polaroidFileName;
 
       if (string.IsNullOrEmpty(iFileName) || iFileName == "<<NO BUCKET>>")
       { // set no image state if we don't have an image file name
@@ -317,7 +333,6 @@ namespace ArtWorkHTML
       jpgURL = baseURL + fileName + ".jpg";
 
       this.errors.Add($"Was found on server and not DB");
-
     }
     
     // This constructor is used when we only have the filename from the bucket and no other information about the artwork. It creates an artwork with default values for all other properties and sets the state to indicate that it was found in the bucket but not in the database.
