@@ -54,6 +54,8 @@ public partial class ArtworkHTML
   private readonly Dictionary<string, int> _errorCounts = new();
   private int _polaroidCount = 0;
   private int _scansCount = 0;
+  private int _dateNotEnteredCount = 0;
+  private int _dateUnknownCount = 0;
   public bool DbSketchOnly { get; set; } = false;
   private static readonly string _version =
     System.Reflection.Assembly.GetExecutingAssembly()
@@ -219,6 +221,8 @@ public partial class ArtworkHTML
       lines.Add($"  {kvp.Value,4}x  {kvp.Key}");
     lines.Add($"  {_polaroidCount,5}  Unmatched polaroids");
     lines.Add($"  {_scansCount,5}  Scans without art type");
+    lines.Add($"  {_dateNotEnteredCount,5}  date not entered (year 1899)");
+    lines.Add($"  {_dateUnknownCount,5}  date unknown (year 1900)");
     return lines;
   }
 
