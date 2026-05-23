@@ -381,6 +381,8 @@ public partial class ArtworkHTML
 
     _polaroidCount = polaroidList.artworks.Count;
     _scansCount = scansList.artworks.Count;
+    _dateNotEnteredCount = artList.artworks.Values.Count(a => a.ctDate.Year == 1899);
+    _dateUnknownCount = artList.artworks.Values.Count(a => a.ctDate.Year == 1900);
 
     await WriteArtworkGalleryPage(
       "artwork.html",
