@@ -58,7 +58,8 @@ public partial class ArtworkHTML
           diri_back.dirimgs as back_imgs, -- 16  
           diri_front.dirimgs as front_imgs, -- 17
           diri_polaroid.dirimgs AS polaroid_imgs,  -- 18
-          t.code, t.description as type_desc -- 19, 20
+          t.code, t.description as type_desc, -- 19, 20
+          a.unsigned -- 21
         FROM artwork a
         LEFT JOIN artwork_type t ON a.type_id ->> 0 = t.airtable_id
         LEFT JOIN imgGroup ai_back ON a.airtable_id = ai_back.artwork_id AND ai_back.lview    ='Back'
@@ -122,7 +123,8 @@ public partial class ArtworkHTML
           reader.IsDBNull(8) ? "" : reader.GetString(8), reader.IsDBNull(9) ? "" : reader.GetString(9),
           reader.IsDBNull(10) ? "" : reader.GetString(10), reader.IsDBNull(11) ? "" : reader.GetString(11),
           reader.IsDBNull(19) ? "" : reader.GetString(19),
-          backId, frontId, paperId, polaroidId,backFileName, frontFileName, polaroidFileName);  
+          backId, frontId, paperId, polaroidId,backFileName, frontFileName, polaroidFileName);
+      artwork.unsigned = !reader.IsDBNull(21) && reader.GetBoolean(21);
 
       artList.AddArtwork(artwork);
     } // while reader.ReadAsync()
@@ -987,6 +989,8 @@ public partial class ArtworkHTML
       html.AppendLine($"    {BlankOrWithBR(art.dimensions, "  "," inches")}");
       html.AppendLine($"    {BlankOrWithBR(art.foldedDimensions, "   Folded: "," inches")}");
       html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
+      if (art.unsigned)
+        html.AppendLine($"    <span style='color:lightcoral;'>This artwork is unsigned</span><br/>");
       html.AppendLine($"  </div>");
       var artTags = string.Join(",", new[] { GetTypeTag(art.typeCode), art.humanId }.Where(t => !string.IsNullOrEmpty(t)));
       var seriesTag = MakeTag(art.series);
