@@ -78,7 +78,7 @@ public partial class ArtworkHTML
     const string sketchSQL = @"
        SELECT s.airtable_id, s.sketch_dt, s.description, s.sketch_loc, s.sketch_people,
               s.sketch_medium, s.sketchbook_number, s.page_number, s.artwork_id, s.filename, s.pub_notes,
-              s.hide
+              s.hide, s.deletefile
        FROM sketch s
        ORDER BY s.sketchbook_number ASC, s.page_number ASC";
 
@@ -150,6 +150,7 @@ public partial class ArtworkHTML
 
       Artwork sketch = new(airtable_id, ctDate, location, people, medium, sketchbookNumber, pageNumber, artworkID, pubNotes, filename);
       sketch.hide = !sketchreader.IsDBNull(11) && sketchreader.GetBoolean(11);
+      sketch.deletefile = !sketchreader.IsDBNull(12) && sketchreader.GetBoolean(12);
 
       sketchBookList.AddArtwork(sketch);
     } // while reader.ReadAsync()
@@ -197,6 +198,8 @@ public partial class ArtworkHTML
       int tifBucketFiles = 0;
       int scanBucketFiles = 0;
       int scanJPGBucketFiles = 0;
+      int sscanBucketFiles = 0;
+      int sscanJPGBucketFiles = 0;
       int JPGBucketFiles = 0;
       int atchBucketFiles = 0;
 
@@ -262,6 +265,50 @@ public partial class ArtworkHTML
                 scansList.AddBucketFile("scans/", name, ext, lastModified, true);
               break;
 
+            case "sscan":
+              sscanBucketFiles++;
+              // Same logic as "scans" but with dbPrefix "sscan/". sscan/jpg uses the
+              // three-size naming, so the scansList entry's jpgURL must point at
+              // <base>_large.jpg, not <base>.jpg (which is what AddBucketFile sets by default).
+              if (artList.TryAttachBucketFile(name, ext, "sscan/") != null) break;
+              if (ext == "tif" && filename.StartsWith("KLA"))
+              {
+                if (!DbSketchOnly)
+                  sketchBookList.AddSketchBucketFile("sscan/", name, ext, lastModified, true);
+              }
+              else if (System.Text.RegularExpressions.Regex.IsMatch(name, @"^\d{4}P\d+$"))
+                polaroidList.AddBucketFile("sscan/", name, ext, lastModified, true);
+              else
+              {
+                var a = scansList.AddBucketFile("sscan/", name, ext, lastModified, true);
+                if (ext == "tif") a.SetSizedJpgURL("sscan/", name);
+              }
+              break;
+
+            case "sscan/jpg":
+              sscanJPGBucketFiles++;
+              // sscan JPGs come in three variants: <base>_small.jpg, _large.jpg, _full.jpg.
+              // Strip the suffix before matching against DB FileName values.
+              string sscanBase = StripSizeSuffix(name, out string? sscanSize);
+              if (artList.TryAttachBucketFile(sscanBase, ext, "sscan/") != null) break;
+              // Only the _large variant triggers fallback categorisation so we don't
+              // emit three duplicate rows per basename. (Files without a known size
+              // suffix also fall through — likely a naming bug to surface in scans.html.)
+              if (sscanSize != null && sscanSize != "_large") break;
+              if (sscanBase.StartsWith("KLA"))
+              {
+                if (!DbSketchOnly)
+                  sketchBookList.AddSketchBucketFile("sscan/", sscanBase, ext, lastModified, true);
+              }
+              else if (System.Text.RegularExpressions.Regex.IsMatch(sscanBase, @"^\d{4}P\d+$"))
+                polaroidList.AddBucketFile("sscan/", sscanBase, ext, lastModified, true);
+              else
+              {
+                var a = scansList.AddBucketFile("sscan/", sscanBase, ext, lastModified, true);
+                a.SetSizedJpgURL("sscan/", sscanBase);
+              }
+              break;
+
             case "jpg":
               if (ext == "jpg")
                 artList.AddBucketFile("", name, ext, lastModified);
@@ -296,6 +343,8 @@ public partial class ArtworkHTML
       Console.WriteLine($"Total JPG files in bucket: {JPGBucketFiles}");
       Console.WriteLine($"Total scan JPG files in bucket: {scanJPGBucketFiles}");
       Console.WriteLine($"Total scan files in bucket: {scanBucketFiles}");
+      Console.WriteLine($"Total sscan JPG files in bucket: {sscanJPGBucketFiles}");
+      Console.WriteLine($"Total sscan files in bucket: {sscanBucketFiles}");
       Console.WriteLine($"Total tif files in bucket: {tifBucketFiles}");
       Console.WriteLine($"Total attachment files in bucket: {atchBucketFiles}");
     }
@@ -329,6 +378,9 @@ public partial class ArtworkHTML
           (art.frontFileName == null || art.frontFileName.Length == 0))
         art.errors.Add("Missing front photo");
     }
+
+    _polaroidCount = polaroidList.artworks.Count;
+    _scansCount = scansList.artworks.Count;
 
     await WriteArtworkGalleryPage(
       "artwork.html",
@@ -385,7 +437,7 @@ public partial class ArtworkHTML
       Artwork art = artItem.Value;
 
       html.AppendLine($@"<div class='gallery-item'>");
-      html.AppendLine($@"  <a href='{art.jpgURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
+      html.AppendLine($@"  <a href='{art.jpgFullURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
         <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
 
       html.AppendLine($"<div>");
@@ -414,7 +466,7 @@ public partial class ArtworkHTML
 
     html.AppendLine(@"</div>");
     html.AppendLine(GetLightboxHtml());
-    html.AppendLine($"<script>{GetLightboxScript()}</script>");
+    html.AppendLine(GetLightboxScriptTag());
     html.AppendLine(GetHtmlFooter());
 
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "polaroids.html"), html.ToString());
@@ -424,14 +476,14 @@ public partial class ArtworkHTML
 
     #region sketchbook list pages
     var lastSketchbookNumber = -1;
-    List<int> sketchbookNumbers = sketchBookList.artworks.Values.Where(e => e.myType.HasFlag(ArtType.Sketch) && !e.hide).Select(a => a.sketchbookNumber).Distinct().OrderBy(n => n).ToList();
+    List<int> sketchbookNumbers = sketchBookList.artworks.Values.Where(e => e.myType.HasFlag(ArtType.Sketch) && !e.hide && !e.deletefile).Select(a => a.sketchbookNumber).Distinct().OrderBy(n => n).ToList();
 
     // Ensure sketchbooks subdirectory exists
     var sketchbooksDir = Path.Combine(_outputDirectory, "sketchbooks");
     Directory.CreateDirectory(sketchbooksDir);
 
      // Now generate the HTML page for each sketchbook list
-    foreach (var sketchBookEntry in sketchBookList.artworks.Where(e => e.Value.myType.HasFlag(ArtType.Sketch) && !e.Value.hide).OrderBy(e => e.Value.sketchbookNumber).ThenBy(e => e.Value.pageNumber))
+    foreach (var sketchBookEntry in sketchBookList.artworks.Where(e => e.Value.myType.HasFlag(ArtType.Sketch) && !e.Value.hide && !e.Value.deletefile).OrderBy(e => e.Value.sketchbookNumber).ThenBy(e => e.Value.pageNumber))
     {
       int bookNumber = sketchBookEntry.Value.sketchbookNumber;
 
@@ -442,7 +494,7 @@ public partial class ArtworkHTML
           // If this is not the first sketchbook, we need to write out the previous one before starting a new one
           html.AppendLine(@"</div>"); // close container
           html.AppendLine(GetLightboxHtml());
-          html.AppendLine($"<script>{GetLightboxScript()}</script>");
+          html.AppendLine(GetLightboxScriptTag("../"));
           html.AppendLine(GetHtmlFooter("../"));
           await File.WriteAllTextAsync(Path.Combine(sketchbooksDir, $"sketchbook{lastSketchbookNumber}.html"), html.ToString());
           Console.WriteLine($"  ✓ sketchbooks/sketchbook{lastSketchbookNumber}.html");
@@ -496,7 +548,7 @@ public partial class ArtworkHTML
       Artwork art = sketchBookEntry.Value;
 
       html.AppendLine($@"<div class='gallery-item'>");
-      html.AppendLine($@"  <a href='{art.jpgURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
+      html.AppendLine($@"  <a href='{art.jpgFullURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
         <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
 
       html.AppendLine($"  <div class='desc item-description'>");
@@ -529,7 +581,7 @@ public partial class ArtworkHTML
 
     html.AppendLine(@"</div>");
     html.AppendLine(GetLightboxHtml());
-    html.AppendLine($"<script>{GetLightboxScript()}</script>");
+    html.AppendLine(GetLightboxScriptTag("../"));
     html.AppendLine(GetHtmlFooter("../"));
 
     await File.WriteAllTextAsync(Path.Combine(sketchbooksDir, $"sketchbook{lastSketchbookNumber}.html"), html.ToString());
@@ -563,7 +615,7 @@ public partial class ArtworkHTML
 
     #region hidden sketchbook pages
     var lastHideSketchbookNumber = -1;
-    List<int> hideSketchbookNumbers = sketchBookList.artworks.Values.Where(e => e.myType.HasFlag(ArtType.Sketch) && (e.hide || e.states.HasFlag(StatesType.noDB))).Select(a => a.sketchbookNumber).Distinct().OrderBy(n => n).ToList();
+    List<int> hideSketchbookNumbers = sketchBookList.artworks.Values.Where(e => e.myType.HasFlag(ArtType.Sketch) && !e.deletefile && (e.hide || e.states.HasFlag(StatesType.noDB))).Select(a => a.sketchbookNumber).Distinct().OrderBy(n => n).ToList();
 
     if (hideSketchbookNumbers.Count > 0)
     {
@@ -572,7 +624,7 @@ public partial class ArtworkHTML
       Directory.CreateDirectory(hideDir);
 
       // Now generate the HTML page for each hidden sketchbook
-      foreach (var sketchBookEntry in sketchBookList.artworks.Where(e => e.Value.myType.HasFlag(ArtType.Sketch) && (e.Value.hide || e.Value.states.HasFlag(StatesType.noDB))).OrderBy(e => e.Value.sketchbookNumber).ThenBy(e => e.Value.pageNumber))
+      foreach (var sketchBookEntry in sketchBookList.artworks.Where(e => e.Value.myType.HasFlag(ArtType.Sketch) && !e.Value.deletefile && (e.Value.hide || e.Value.states.HasFlag(StatesType.noDB))).OrderBy(e => e.Value.sketchbookNumber).ThenBy(e => e.Value.pageNumber))
       {
         int bookNumber = sketchBookEntry.Value.sketchbookNumber;
 
@@ -582,7 +634,7 @@ public partial class ArtworkHTML
           {
             html.AppendLine(@"</div>"); // close container
             html.AppendLine(GetLightboxHtml());
-            html.AppendLine($"<script>{GetLightboxScript()}</script>");
+            html.AppendLine(GetLightboxScriptTag("../"));
             html.AppendLine(GetHtmlFooter("../"));
             await File.WriteAllTextAsync(Path.Combine(hideDir, $"sketchbook{lastHideSketchbookNumber}.html"), html.ToString());
             Console.WriteLine($"  ✓ hide/sketchbook{lastHideSketchbookNumber}.html");
@@ -634,7 +686,7 @@ public partial class ArtworkHTML
         Artwork art = sketchBookEntry.Value;
 
         html.AppendLine($@"<div class='gallery-item'>");
-        html.AppendLine($@"  <a href='{art.jpgURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
+        html.AppendLine($@"  <a href='{art.jpgFullURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
           <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
 
         html.AppendLine($"  <div class='desc item-description'>");
@@ -665,7 +717,7 @@ public partial class ArtworkHTML
 
       html.AppendLine(@"</div>");
       html.AppendLine(GetLightboxHtml());
-      html.AppendLine($"<script>{GetLightboxScript()}</script>");
+      html.AppendLine(GetLightboxScriptTag("../"));
       html.AppendLine(GetHtmlFooter("../"));
 
       await File.WriteAllTextAsync(Path.Combine(hideDir, $"sketchbook{lastHideSketchbookNumber}.html"), html.ToString());
@@ -857,7 +909,7 @@ public partial class ArtworkHTML
       html.AppendLine($@"<div class='gallery-item'>");
       if ((art.states & StatesType.NoImage) == 0)
       {
-        html.AppendLine($@"  <a href='{art.jpgURL}' rel='noopener noreferrer'>
+        html.AppendLine($@"  <a href='{art.jpgFullURL}' rel='noopener noreferrer'>
                    <img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/>
                     </a><br/>
                     <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
@@ -971,18 +1023,34 @@ public partial class ArtworkHTML
 
     html.AppendLine(@"</div>");
     html.AppendLine(GetLightboxHtml());
-    html.AppendLine($"<script>{GetLightboxScript()}</script>");
+    html.AppendLine(GetLightboxScriptTag());
     html.AppendLine(GetHtmlFooter());
 
-    if (trackErrors && _errorCounts.Count > 0)
+    if (trackErrors)
     {
       html.AppendLine("<!--");
-      html.AppendLine("=== Artwork Page Errors ===");
-      foreach (var kvp in _errorCounts.OrderByDescending(x => x.Value))
-        html.AppendLine($"  {kvp.Value,4}x  {kvp.Key}");
+      foreach (var line in BuildErrorSummaryLines())
+        html.AppendLine(line);
       html.AppendLine("-->");
     }
 
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, outputFileName), html.ToString());
+  }
+
+  // Strip a trailing _small / _large / _full from a JPG basename.
+  // Returns the stripped name and (via out param) the suffix that was removed,
+  // or null if the name doesn't end in a known size suffix.
+  private static string StripSizeSuffix(string name, out string? sizeSuffix)
+  {
+    foreach (var size in new[] { "_small", "_large", "_full" })
+    {
+      if (name.EndsWith(size, StringComparison.OrdinalIgnoreCase))
+      {
+        sizeSuffix = size;
+        return name.Substring(0, name.Length - size.Length);
+      }
+    }
+    sizeSuffix = null;
+    return name;
   }
 }
