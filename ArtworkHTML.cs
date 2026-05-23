@@ -52,6 +52,8 @@ public partial class ArtworkHTML
   private readonly string _connectionString;
   private readonly string _outputDirectory;
   private readonly Dictionary<string, int> _errorCounts = new();
+  private int _polaroidCount = 0;
+  private int _scansCount = 0;
   public bool DbSketchOnly { get; set; } = false;
   private static readonly string _version =
     System.Reflection.Assembly.GetExecutingAssembly()
@@ -207,12 +209,37 @@ public partial class ArtworkHTML
     _outputDirectory = outputDirectory;
   }
 
+  private List<string> BuildErrorSummaryLines()
+  {
+    var lines = new List<string>
+    {
+      $"=== Artwork Page Errors | Generated {DateTime.Now:MMMM d, yyyy' at 'h:mm tt} | v{_version} ==="
+    };
+    foreach (var kvp in _errorCounts.OrderByDescending(x => x.Value))
+      lines.Add($"  {kvp.Value,4}x  {kvp.Key}");
+    lines.Add($"  {_polaroidCount,5}  Unmatched polaroids");
+    lines.Add($"  {_scansCount,5}  Scans without art type");
+    return lines;
+  }
+
   private void CleanOutputDirectory()
   {
     foreach (var file in Directory.EnumerateFiles(_outputDirectory, "*.html", SearchOption.AllDirectories))
       File.Delete(file);
     foreach (var file in Directory.EnumerateFiles(_outputDirectory, "*.css", SearchOption.AllDirectories))
       File.Delete(file);
+    foreach (var file in Directory.EnumerateFiles(_outputDirectory, "*.js", SearchOption.AllDirectories))
+      File.Delete(file);
+  }
+
+  private async Task GenerateLightboxScript()
+  {
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "lightbox.js"), GetLightboxScript());
+  }
+
+  private static string GetLightboxScriptTag(string pathPrefix = "")
+  {
+    return $"<script src='{pathPrefix}lightbox.js'></script>";
   }
 
   public async Task GenerateStaticPages()
@@ -226,6 +253,7 @@ public partial class ArtworkHTML
     await GenerateFeedbackPage();
     await GenerateOpensourcePage();
     await GenerateStylesheet();
+    await GenerateLightboxScript();
 
     Console.WriteLine("  ✓ index.html - Landing page");
     Console.WriteLine("  ✓ copyright.html");
@@ -235,6 +263,7 @@ public partial class ArtworkHTML
     Console.WriteLine("  ✓ feedback.html");
     Console.WriteLine("  ✓ opensource.html");
     Console.WriteLine("  ✓ style.css - Stylesheet");
+    Console.WriteLine("  ✓ lightbox.js - Lightbox script");
   }
 
   public async Task GenerateAllPages()
@@ -278,6 +307,7 @@ public partial class ArtworkHTML
     await GenerateFeedbackPage();
     await GenerateOpensourcePage();
     await GenerateStylesheet();
+    await GenerateLightboxScript();
 
     Console.WriteLine("  ✓ index.html - Landing page");
     Console.WriteLine("  ✓ statistics.html - Archive statistics");
@@ -290,17 +320,11 @@ public partial class ArtworkHTML
     Console.WriteLine("  ✓ feedback.html");
     Console.WriteLine("  ✓ opensource.html");
     Console.WriteLine("  ✓ style.css - Stylesheet");
+    Console.WriteLine("  ✓ lightbox.js - Lightbox script");
 
-    if (_errorCounts.Count > 0)
-    {
-      Console.WriteLine("\n=== Artwork Page Errors ===");
-      foreach (var kvp in _errorCounts.OrderByDescending(x => x.Value))
-        Console.WriteLine($"  {kvp.Value,4}x  {kvp.Key}");
-    }
-    else
-    {
-      Console.WriteLine("\n✓ No artwork page errors.");
-    }
+    Console.WriteLine();
+    foreach (var line in BuildErrorSummaryLines())
+      Console.WriteLine(line);
   }
 
 
@@ -435,10 +459,14 @@ public partial class ArtworkHTML
     return views;
   }
 
-  function openLightbox(item) {
+  function openLightbox(item, viewHref) {
     items = Array.from(document.querySelectorAll('.gallery-item.tag-active'));
     currentIndex = items.indexOf(item);
     showItem(currentIndex);
+    if (viewHref) {
+      var i = currentViews.findIndex(function(v) { return v.src === viewHref; });
+      if (i > 0) showView(i);
+    }
     lb.classList.add('active');
     document.body.style.overflow = 'hidden';
   }
@@ -481,6 +509,16 @@ public partial class ArtworkHTML
   }
 
   document.addEventListener('click', function(e) {
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+    var thumbAnchor = e.target.closest('.thumb-button');
+    if (thumbAnchor) {
+      var galleryItem = thumbAnchor.closest('.gallery-item');
+      if (galleryItem) {
+        e.preventDefault();
+        openLightbox(galleryItem, thumbAnchor.href);
+        return;
+      }
+    }
     var anchor = e.target.closest('.gallery-item > a');
     if (!anchor) return;
     e.preventDefault();

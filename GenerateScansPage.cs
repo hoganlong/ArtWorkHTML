@@ -39,7 +39,7 @@ public partial class ArtworkHTML
 
       if (art.states.HasFlag(StatesType.jpgFound))
       {
-        html.AppendLine($@"  <a href='{art.jpgURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>");
+        html.AppendLine($@"  <a href='{art.jpgFullURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>");
       }
       else
       {
@@ -59,7 +59,7 @@ public partial class ArtworkHTML
 
     html.AppendLine(@"</div>");
     html.AppendLine(GetLightboxHtml());
-    html.AppendLine($"<script>{GetLightboxScript()}</script>");
+    html.AppendLine(GetLightboxScriptTag());
     html.AppendLine(GetHtmlFooter());
 
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "scans.html"), html.ToString());

@@ -205,10 +205,23 @@ namespace ArtWorkHTML
 
     public StatesType states=StatesType.NoImage;
     public bool hide = false;
+    public bool deletefile = false;
 
     // Direved utility elements
     public string tifURL = new("");
     public string jpgURL = new("");
+
+    // Lightbox target: derived from jpgURL. For sized layouts (sscan/, atch/...) the
+    // preview is _large.jpg but the lightbox should open _full.jpg. For flat-named
+    // paths (scans/, jpg/) jpgURL has no _large suffix and this returns it unchanged.
+    public string jpgFullURL
+    {
+      get
+      {
+        var idx = jpgURL.LastIndexOf("_large.jpg", StringComparison.OrdinalIgnoreCase);
+        return idx >= 0 ? jpgURL.Substring(0, idx) + "_full.jpg" : jpgURL;
+      }
+    }
 
     public string MakeJPGURL(string filename)
     {
@@ -220,6 +233,11 @@ namespace ArtWorkHTML
       {
         return $"{baseURL}jpg/{filename}.jpg";
       }
+    }
+
+    public void SetSizedJpgURL(string path, string baseName, string size = "large")
+    {
+      this.jpgURL = $"{baseURL}{path}jpg/{baseName}_{size}.jpg";
     }
 
 
@@ -272,6 +290,12 @@ namespace ArtWorkHTML
         {
           var basename = iFileName.Substring("scans/".Length);
           jpgURL = baseURL + "scans/jpg/" + basename + ".jpg";
+        }
+        else if (iFileName.StartsWith("sscan/", StringComparison.OrdinalIgnoreCase))
+        {
+          // sscan/ JPGs use the three-size convention; default to _large for preview.
+          var basename = iFileName.Substring("sscan/".Length);
+          jpgURL = baseURL + "sscan/jpg/" + basename + "_large.jpg";
         }
         else
         {
