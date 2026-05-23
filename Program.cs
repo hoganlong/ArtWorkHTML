@@ -7,8 +7,47 @@ using Amazon.SecretsManager.Model;
 
 class Program
 {
+    static void PrintUsage()
+    {
+        Console.WriteLine("Usage: dotnet run [-- <command>] [--dbsketchonly]");
+        Console.WriteLine();
+        Console.WriteLine("Generates the static HTML gallery from PostgreSQL data + S3 images.");
+        Console.WriteLine("With no command, generates every page into Output:Directory.");
+        Console.WriteLine();
+        Console.WriteLine("Commands:");
+        Console.WriteLine("  gen-static              generate only static / non-data pages (no DB needed)");
+        Console.WriteLine("  test-airtable           sanity-check the Airtable API connection and exit");
+        Console.WriteLine("  test-db                 sanity-check the PostgreSQL connection and exit");
+        Console.WriteLine();
+        Console.WriteLine("Options:");
+        Console.WriteLine("  --dbsketchonly          restrict sketchbook pages to DB rows (skip extras from S3)");
+        Console.WriteLine("  -h, --help, -?, /?, ?   show this help and exit");
+        Console.WriteLine();
+        Console.WriteLine("Configuration (appsettings.json):");
+        Console.WriteLine("  Airtable:ApiKey/BaseId/TableName  used only by test-airtable");
+        Console.WriteLine("  PostgreSQL:Host/Database/Port/SecretArn  DB connection");
+        Console.WriteLine("  Output:Directory                  output folder (default: artwork_html)");
+    }
+
     static async Task Main(string[] args)
     {
+        if (args.Any(a => a is "-h" or "--help" or "-?" or "/?" or "?"))
+        {
+            PrintUsage();
+            return;
+        }
+        foreach (var a in args)
+        {
+            if ((a.StartsWith("-") || a.StartsWith("/")) && a is not "--dbsketchonly")
+            {
+                Console.WriteLine($"Unknown option: {a}");
+                Console.WriteLine();
+                PrintUsage();
+                Environment.ExitCode = 1;
+                return;
+            }
+        }
+
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json")
