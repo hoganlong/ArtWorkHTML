@@ -476,6 +476,21 @@ public partial class ArtworkHTML
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "polaroids.html"), html.ToString());
     #endregion
 
+    // Remove files that the shows feature claims (invitations, installation
+    // shots, etc.) — they're not "unclassified scans".
+    var showBasenames = await LoadShowImageBasenamesAsync();
+    var scansBefore = scansList.artworks.Count;
+    if (showBasenames.Count > 0)
+    {
+      var toRemove = scansList.artworks
+        .Where(kv => showBasenames.Contains(kv.Value.fileName))
+        .Select(kv => kv.Key)
+        .ToList();
+      foreach (var key in toRemove) scansList.artworks.Remove(key);
+      _scansCount = scansList.artworks.Count;
+      Console.WriteLine($"  Filter from scans.html: {toRemove.Count} of {scansBefore} scansList entries matched; filter set has {showBasenames.Count} basenames (shows + photos)");
+    }
+
     await GenerateScansPage(scansList);
 
     #region sketchbook list pages
@@ -501,7 +516,6 @@ public partial class ArtworkHTML
           html.AppendLine(GetLightboxScriptTag("../"));
           html.AppendLine(GetHtmlFooter("../"));
           await File.WriteAllTextAsync(Path.Combine(sketchbooksDir, $"sketchbook{lastSketchbookNumber}.html"), html.ToString());
-          Console.WriteLine($"  ✓ sketchbooks/sketchbook{lastSketchbookNumber}.html");
         }
         lastSketchbookNumber = bookNumber;
         html.Clear();
@@ -589,7 +603,7 @@ public partial class ArtworkHTML
     html.AppendLine(GetHtmlFooter("../"));
 
     await File.WriteAllTextAsync(Path.Combine(sketchbooksDir, $"sketchbook{lastSketchbookNumber}.html"), html.ToString());
-    Console.WriteLine($"  ✓ sketchbooks/sketchbook{lastSketchbookNumber}.html");
+    Console.WriteLine($"  ✓ sketchbooks/ — {sketchbookNumbers.Count} sketchbook pages");
 
     // Generate sketchbooks.html index at root
     html.Clear();
@@ -641,7 +655,6 @@ public partial class ArtworkHTML
             html.AppendLine(GetLightboxScriptTag("../"));
             html.AppendLine(GetHtmlFooter("../"));
             await File.WriteAllTextAsync(Path.Combine(hideDir, $"sketchbook{lastHideSketchbookNumber}.html"), html.ToString());
-            Console.WriteLine($"  ✓ hide/sketchbook{lastHideSketchbookNumber}.html");
           }
           lastHideSketchbookNumber = bookNumber;
           html.Clear();
@@ -725,7 +738,7 @@ public partial class ArtworkHTML
       html.AppendLine(GetHtmlFooter("../"));
 
       await File.WriteAllTextAsync(Path.Combine(hideDir, $"sketchbook{lastHideSketchbookNumber}.html"), html.ToString());
-      Console.WriteLine($"  ✓ hide/sketchbook{lastHideSketchbookNumber}.html");
+      Console.WriteLine($"  ✓ hide/ — {hideSketchbookNumbers.Count} hidden sketchbook pages");
 
       // Generate hide.html index at root
       html.Clear();

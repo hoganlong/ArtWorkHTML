@@ -276,6 +276,7 @@ public partial class ArtworkHTML
     await GenerateIndexPage();
     await GenerateStatisticsPage();
     await GenerateArtworkPages();
+    await GenerateShowsPage();
     await GenerateCopyrightPage();
     await GenerateHowIsMadePage();
     await GenerateCreditsPage();

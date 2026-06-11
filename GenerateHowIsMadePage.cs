@@ -39,7 +39,15 @@ public partial class ArtworkHTML
       The date and time the pages were last generated is recorded at the bottom of every page.</p>
 
       <h3>What about the pictures?</h3>
-      <p>The pictures of the artworks were taken by a professional photographer and color processed by him then uploaded to web cloud storage using file names stored in the DB.  (This allowed the HTML generator to reference them in the page generation.)   In a similar way the scans were performed by professional scanners and stored on the web cloud storage.  The scanners provided a metadata record for each scan containing: the filename, sketchbook number, page number, date (when readable via OCR), and a notes field — used so far to flag pages that were attachments taped into the book rather than bound pages. This metadata was uploaded to the database and is what allows the HTML generator to correctly organize and display the sketchbook pages.</p>
+      <p>The pictures of the artworks were taken by a professional photographer and color processed by him then uploaded to web cloud storage 
+      using file names stored in the DB.  (This allowed the HTML generator to reference them in the page generation.)   
+      In a similar way the scans were performed by professional scanners and stored on the web cloud storage.  The scanners provided a metadata record for each scan containing: the filename, sketchbook number, page number, date (when readable via OCR), and a notes field — used so far to flag pages that were attachments taped into the book rather than bound pages. This metadata was uploaded to the database and is what allows the HTML generator to correctly organize and display the sketchbook pages.</p>
+      <p>In addition to the sketchbook scans, we also have a collection of scans of various documents related to Keith's life and work.  
+      These include: slides, photos, drawings, letters, notes, clippings, and other miscellaneous items.</p> 
+      <p>Our internal team also scanned some of the smaller items using a high-resolution personal tabletop scanner.  We created software to convert the tif files from the scanner to jpg format.</p>
+
+      <h3>Deployments and upload</h3> 
+      <p>The final step of the process is to upload the generated HTML files and images to cloud storage and make them available on the web.  We used AWS S3 for storage and CloudFront for content delivery.  The upload process is automated using a script that syncs the generated local files with the S3 bucket and then clears the CloudFront cache.</p> 
 
       <h3>Additional details and tools</h3>
       <table class='std-table'>
@@ -50,6 +58,13 @@ public partial class ArtworkHTML
         <tr><td>Code generation ""AI""...</td><td>Claude Code (~v4.6)</td></tr>
         <tr><td>Languages used...</td><td>C#, HTML, JavaScript, <small>(unknown AirTable script)</small></td></tr>
       </table>
+
+      <h3>Take a look at the code</h3>
+      <p>All the code for the database migration and HTML generation is available on GitHub: <a href='https://github.com/hoganlong/ArchiveSystem'>Hogan's Archive System</a> This project includes all the technical documentation and source code for the project.  Nothing is hidden or proprietary.</p>
+
+
+
+
       </div>
     </div>");
     html.AppendLine(GetHtmlFooter());
