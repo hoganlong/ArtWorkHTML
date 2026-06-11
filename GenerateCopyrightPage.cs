@@ -17,7 +17,7 @@ public partial class ArtworkHTML
         <p class='subtitle'><a href='index.html'>← Back to Archive</a></p>
         <div class='landing-content'>
             <p>All the artwork on this site was created by my father and is copyright under his name.
-             He passed away on September 9, 2025.  That means it will stay under copyright of the estate until 2095.
+             He passed away on September 27, 2025.  That means it will stay under copyright of the estate until 2095.
              The copyright is now held by his estate, managed by his son Hogan Long — for copyright questions contact keithlongarchive AT gmail DOT com.</p>
             <p>Copyright requires the person holding the copyright to enforce it, so I will explain how I will enforce it here.</p>
             <p><b>TLDR;</b> Put a link to this website if you use pictures from here.  If unsure about use, contact us and get our ok to use this content.</p>
@@ -37,11 +37,13 @@ public partial class ArtworkHTML
              <li><b>Rework/remix into other art</b> - Sure.  That is how art is — art has always built on what came before — and I understand.  But there are certainly changes that don't count as rework.
               Downloading a tif and just changing the background color for example is not a rework.  You know when you are making something that is truly new.  Do that.</li>
             </ul>
+            <p/>
             <h2>Things that are not ok</h2>
             <ul>
             <li><b>Selling reproductions</b> without getting permission</li>
             <li><b>Selling merch</b> with reproductions on it</li>
             </ul>
+            <p/>
             <h2>A note on AI</h2>
             <p>The rule for AI is simple: <b>no use without credit.</b>
             This applies both to training data ingestion and to displaying or reproducing the images in AI-generated output.

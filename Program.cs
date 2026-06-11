@@ -130,7 +130,9 @@ class Program
           await generator.GenerateAllPages();
 
         Console.WriteLine($"\n✓ HTML files generated successfully!");
-        Console.WriteLine($"✓ Open: {Path.Combine(fullOutputPath, "index.html")}");
+        var indexPath = Path.Combine(fullOutputPath, "index.html");
+        var indexUrl = "file:///" + indexPath.Replace('\\', '/');
+        Console.WriteLine($"✓ Open: \e]8;;{indexUrl}\e\\{indexPath}\e]8;;\e\\");
     }
 
     static async Task TestAirtableConnection(string apiKey, string baseId, string tableName)

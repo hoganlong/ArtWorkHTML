@@ -20,6 +20,12 @@ body {
     background: #f5f5f5;
 }
 
+ul {
+  list-style-position: outside;
+  padding-left: 20px;
+  margin-left: 0px;
+}
+
 .container {
     max-width: 80%;
     margin: 0 auto;
@@ -53,14 +59,14 @@ h1 {
 }
 
 .landing-header {
-    max-width: 720px;
+    max-width: 1000px;
     margin: 0 auto;
 }
 
 .landing-content {
-    font-size: 1.15em;
-    line-height: 2;
-    max-width: 720px;
+    font-size: 1.0em;
+    line-height: 1.2;
+    max-width: 1000px;
     margin: 0 auto;
 }
 
@@ -633,6 +639,39 @@ footer {
     background: #2980b9;
 }
 
+/* Credits page — per-person blocks */
+.credit-person {
+    margin-bottom: 2em;
+}
+
+.credit-name {
+    font-weight: bold;
+    font-size: 1.15em;
+}
+
+.credit-role {
+    font-style: italic;
+    color: #555;
+    margin-bottom: 0.5em;
+}
+
+.credit-blurb {
+    margin-bottom: 0.5em;
+}
+
+.credit-links {
+    font-size: 0.95em;
+}
+
+.credit-links a {
+    color: #3498db;
+    text-decoration: none;
+}
+
+.credit-links a:hover {
+    text-decoration: underline;
+}
+
 @media (max-width: 768px) {
     .artwork-table {
         font-size: 0.9em;
@@ -663,6 +702,31 @@ footer {
 .lightbox-view-prev, .lightbox-view-next { background:rgba(255,255,255,0.15); border:none; color:white; font-size:1.2rem; cursor:pointer; padding:3px 10px; border-radius:4px; user-select:none; transition:background 0.2s; }
 .lightbox-view-prev:hover, .lightbox-view-next:hover { background:rgba(255,255,255,0.3); }
 .lightbox-view-label { color:#ccc; font-size:0.85em; min-width:100px; text-align:center; }
+
+.show-section-heading { color: #2c3e50; font-size: 1.8em; margin: 32px 0 8px 0; padding-bottom: 4px; border-bottom: 1px solid #ccc; }
+.show-section-heading:first-of-type { margin-top: 16px; }
+
+.show-year { color: #2c3e50; font-size: 1.15em; font-weight: 600; margin: 18px 0 4px 0; }
+.show-year-first { margin-top: 10px; }
+
+.show-index { list-style: none; padding-left: 32px; margin-bottom: 12px; }
+.show-index li { padding: 4px 0; }
+.show-index li a { color: #3498db; text-decoration: none; font-weight: 500; }
+.show-index li a:hover { text-decoration: underline; }
+.show-index-gallery { color: #555; }
+.show-index-dates { color: #7f8c8d; font-size: 0.9em; }
+.show-index-count { color: #7f8c8d; font-size: 0.9em; }
+
+.show-meta { margin: 20px 0 30px 0; display: grid; grid-template-columns: max-content 1fr; column-gap: 16px; row-gap: 6px; max-width: 900px; }
+.show-meta dt { font-weight: 600; color: #555; }
+.show-meta dd { color: #333; }
+
+.show-invites { margin-bottom: 24px; }
+
+.show-section { margin: 14px 0; background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px 14px; }
+.show-section summary { cursor: pointer; color: #3498db; font-weight: 500; padding: 6px 0; user-select: none; }
+.show-section summary:hover { text-decoration: underline; }
+.show-section[open] summary { border-bottom: 1px solid #eee; margin-bottom: 10px; }
 ";
 
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "style.css"), css);
