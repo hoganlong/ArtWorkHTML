@@ -50,6 +50,7 @@ public partial class ArtworkHTML
             <div class='nav-button-wrap'><a href='scans.html' class='nav-button'>Scans</a><div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><a href='sketchbooks.html' class='nav-button'>Sketchbooks</a><div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><a href='shows.html' class='nav-button'>Shows</a><div class='coming-soon'>&nbsp;</div></div>
+            <div class='nav-button-wrap'><a href='photo.html' class='nav-button'>Photos</a><div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><div class='nav-button nav-button-soon'>Media</div><div class='coming-soon'>coming soon</div></div>
             <div class='break-point'></div>
             <div class='nav-button-wrap'><a href='statistics.html' class='nav-button'>Archive Statistics</a><div class='coming-soon'>&nbsp;</div></div>

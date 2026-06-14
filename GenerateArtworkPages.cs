@@ -42,11 +42,27 @@ public partial class ArtworkHTML
           select ai.url, ai.artwork_id, LEFT(ai.view , 4) as lview 
           from artwork_image ai
           where ai.URL is not null 
-        ), dirimgGroup as 
+        ), dirimgGroup as
         (
           select array_to_string(array_agg(url), ', ') as dirimgs, artwork_id, lview
-          from dirimg 
-          group by artwork_id, dirimg.lview 
+          from dirimg
+          group by artwork_id, dirimg.lview
+        ), photimgList as
+        (
+          SELECT
+            COALESCE(file_location,CONCAT('sscan/KL_',pc.CODE,'_',p.IMAGE_NUMBER)) AS URL,
+            link.aid AS artwork_airtable_id
+          FROM photo p
+          LEFT JOIN photo_catagory pc ON p.catagory ->> 0 = pc.airtable_id
+          LEFT JOIN LATERAL jsonb_array_elements_text(p.artwork_id) AS link(aid) ON TRUE
+          WHERE p.ARTWORK_ID  IS NOT NULL
+        ), photoimgGroup AS
+        (
+          SELECT
+            string_agg(URL, ', ') AS URLLIST,
+            artwork_airtable_id
+          FROM photimgList
+          GROUP BY ARTWORK_AIRTABLE_ID
         )
         SELECT
           a.id_field, a.FileName, a.title, a.series, a.create_dt, a.medium, a.dimensions, a.FOLDED_DIMENSIONS,
@@ -55,11 +71,12 @@ public partial class ArtworkHTML
           ai_front.ids as front_id, -- 13
           ai_paper.ids as paper_id, -- 14
           ai_polaroid.ids as polaroid_id, -- 15
-          diri_back.dirimgs as back_imgs, -- 16  
+          diri_back.dirimgs as back_imgs, -- 16
           diri_front.dirimgs as front_imgs, -- 17
           diri_polaroid.dirimgs AS polaroid_imgs,  -- 18
           t.code, t.description as type_desc, -- 19, 20
-          a.unsigned -- 21
+          a.unsigned, -- 21
+          phimg.URLLIST AS photo_imgs -- 22
         FROM artwork a
         LEFT JOIN artwork_type t ON a.type_id ->> 0 = t.airtable_id
         LEFT JOIN imgGroup ai_back ON a.airtable_id = ai_back.artwork_id AND ai_back.lview    ='Back'
@@ -69,6 +86,7 @@ public partial class ArtworkHTML
         LEFT JOIN dirimgGroup diri_back ON a.airtable_id = diri_back.artwork_id AND diri_back.lview    ='Back'
         LEFT JOIN dirimgGroup diri_front ON a.airtable_id = diri_front.artwork_id AND diri_front.lview ='Fron'
         LEFT JOIN dirimgGroup diri_polaroid ON a.airtable_id = diri_polaroid.artwork_id AND diri_polaroid.lview ='Pola'
+        LEFT JOIN photoimgGroup phimg ON a.AIRTABLE_ID = phimg.ARTWORK_AIRTABLE_ID
         ORDER BY a.human_readable_id, a.create_dt ASC NULLS last";
 
     const string photoSQL = @"
@@ -114,6 +132,7 @@ public partial class ArtworkHTML
       var backFileName = reader.IsDBNull(16) ? null : reader.GetString(16).Split(',').Select(s => s.Trim()).ToArray();
       var frontFileName = reader.IsDBNull(17) ? null : reader.GetString(17).Split(',').Select(s => s.Trim()).ToArray();
       var polaroidFileName = reader.IsDBNull(18) ? null : reader.GetString(18).Split(',').Select(s => s.Trim()).ToArray();
+      var photoFileName = reader.IsDBNull(22) ? null : reader.GetString(22).Split(',').Select(s => s.Trim()).ToArray();
 
 
       Artwork artwork = new(reader.GetInt32(0).ToString(), reader.IsDBNull(1) ? "" : reader.GetString(1),
@@ -125,6 +144,7 @@ public partial class ArtworkHTML
           reader.IsDBNull(19) ? "" : reader.GetString(19),
           backId, frontId, paperId, polaroidId,backFileName, frontFileName, polaroidFileName);
       artwork.unsigned = !reader.IsDBNull(21) && reader.GetBoolean(21);
+      artwork.photoFileName = photoFileName;
 
       artList.AddArtwork(artwork);
     } // while reader.ReadAsync()
@@ -625,6 +645,7 @@ public partial class ArtworkHTML
     html.AppendLine(@"
       </div>
     </div>");
+    html.AppendLine($"<script>{GetTagsScript()}</script>");
     html.AppendLine(GetHtmlFooter());
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "sketchbooks.html"), html.ToString());
     Console.WriteLine("  ✓ sketchbooks.html - Sketchbook index");
@@ -988,6 +1009,24 @@ public partial class ArtworkHTML
         }
       }
 
+      if (art.photoFileName is not null && art.photoFileName.Length > 0)
+      {
+        hasMult = hasMult || art.photoFileName.Length > 1;
+        int curNum = 1;
+        foreach (var url in art.photoFileName)
+        {
+          if (!string.IsNullOrEmpty(url))
+          {
+            var bn = ExtractBasename(url);
+            var thumbUrl = art.MakeSizedURL("sscan/", bn, "small");
+            var largeUrl = art.MakeSizedURL("sscan/", bn, "large");
+            var fullUrl  = art.MakeSizedURL("sscan/", bn, "full");
+            thumbButtons.Add($"<a href='{fullUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='Photo{(hasMult?" "+curNum.ToString(): "")}'><img src='{thumbUrl}' width='40' height='40' data-large-src='{largeUrl}' onload='applyThumbSize(this)' loading='lazy' /></a>");
+          }
+          curNum++;
+        }
+      }
+
       if (thumbButtons.Count != 0)
       {
         html.AppendLine($"  <div class='thumb-buttons'>");
@@ -1005,7 +1044,11 @@ public partial class ArtworkHTML
       if (art.unsigned)
         html.AppendLine($"    <span style='color:lightcoral;'>This artwork is unsigned</span><br/>");
       html.AppendLine($"  </div>");
-      var artTags = string.Join(",", new[] { GetTypeTag(art.typeCode), art.humanId }.Where(t => !string.IsNullOrEmpty(t)));
+      var artTags = string.Join(",", new[] {
+        GetTypeTag(art.typeCode),
+        art.humanId,
+        (art.photoFileName != null && art.photoFileName.Any(u => !string.IsNullOrEmpty(u))) ? "photo" : ""
+      }.Where(t => !string.IsNullOrEmpty(t)));
       var seriesTag = MakeTag(art.series);
       var seriesBtn = string.IsNullOrEmpty(seriesTag) ? "" : $" <button class='small-button series-tag-btn' data-series-tag='{EscapeHtml(seriesTag)}' onclick='window._filterToTag(\"{EscapeHtml(seriesTag)}\")' title='Show whole series'>S</button>";
       html.AppendLine($"  <div class='desc'>Tags: <my-tags>{EscapeHtml(artTags)}</my-tags></div><div class='desc'>{seriesBtn}</div>");

@@ -9,9 +9,11 @@ A .NET 10 console application that generates a static HTML website from artwork 
 - Retrieves database credentials securely from AWS Secrets Manager
 - Generates multiple HTML pages:
   - `index.html` — Landing/navigation page with centered content layout
-  - `statistics.html` — Stats with collapsible details: Artworks section (tabbed By Year / By Series / By Location / By Type, each with browse buttons) and Sketchbooks section (per-book table with links)
-  - `artwork.html` — Main gallery with thumbnails, type filter, hover effects, tag-driven visibility
+  - `statistics.html` — Stats with collapsible details: Artworks section (tabbed By Year / By Series / By Location / By Type, each with browse buttons), Sketchbooks section (per-book table), and Photos section (Total Photos / Categories / Year Range stat cards + a per-category details table). Every section-level "Browse All …" button carries `back=statistics.html` so the destination shows a "Return to Statistics" link
+  - `artwork.html` — Main gallery with thumbnails (including photo-table images), type filter, hover effects, tag-driven visibility
   - `polaroids.html` — Polaroid scan gallery
+  - `shows.html` + `shows/show-{id}.html` — Shows index and per-show detail pages
+  - `photo.html` + `photo/{category}.html` — Photos index (one button per `photo_catagory`, with counts) and per-category detail pages showing each photo with date / year / people / location / notes. The synthesized image URL is `file_location` or `sscan/KL_{code}_{image_number}`. An "Uncategorized" page is generated only if uncategorized photos exist
   - `sketchbooks.html` — Sketchbook index with intro text and a button for each sketchbook
   - `sketchbooks/sketchbook1.html`, `sketchbooks/sketchbook2.html`, ... — One page per sketchbook (generated dynamically into `sketchbooks/` subfolder)
   - `hide.html` — Index of hidden sketchbook pages (generated if any sketch rows have `hide = true`, or if bucket-only sketch files exist)
@@ -49,7 +51,7 @@ Tags are case-insensitive. Tags cookie `TAGS=a,b,c` also supported.
 
 ### Tag Data Per Gallery Item (artwork.html)
 Each artwork gallery item contains:
-- `<my-tags>` — **Visible** comma-separated tags: `{TypeTag},{Year},{HumanId}` (e.g. `Drawing,1982,KLA-042`)
+- `<my-tags>` — **Visible** comma-separated tags: `{TypeTag},{HumanId}`, plus `photo` when the artwork has one or more photo-table images (e.g. `Drawing,KL_1982_D_0042,photo`)
 - `<my-hidden-tags>` — **Hidden** comma-separated tags: `{SeriesTag},{LocationTag}` (spaces→`-`, commas stripped via `MakeTag()`)
 
 **Known issue**: Type filter checkboxes assume the type tag is always the first value in `<my-tags>`. If tag order changes, checkboxes break. Future fix: use a dedicated element or data attribute for type.
@@ -182,6 +184,7 @@ Bucket: `keithlong-art-photos` (us-east-1)
 | `atch/` | Attachment images (`artwork_{id}_{size}.jpg`) |
 | `scans/` | Sketchbook TIF scans and polaroid TIF scans |
 | `scans/jpg/` | Sketchbook JPGs (`KLA_*`) and polaroid JPGs |
+| `sscan/`, `sscan/jpg/` | Photo-table images (sized variants: `_small`/`_large`/`_full`) |
 
 ## Project Structure
 
@@ -194,6 +197,8 @@ ArtWorkHTML/
 ├── GenerateStylesheet.cs       — CSS stylesheet generation (partial class)
 ├── GenerateArtworkPages.cs     — Gallery page generation (partial class)
 ├── GenerateStatisticsPage.cs   — Statistics page generation (partial class)
+├── GenerateShowsPage.cs        — shows.html + per-show pages; LoadShowImageBasenamesAsync (scans-exclusion set) (partial class)
+├── GeneratePhotoPages.cs       — photo.html + per-category photo pages (partial class)
 ├── GenerateCopyrightPage.cs    — copyright.html (partial class)
 ├── GenerateHowIsMadePage.cs    — howisitmade.html (partial class)
 ├── GenerateCreditsPage.cs      — credits.html (partial class)
@@ -219,8 +224,8 @@ ArtWorkHTML/
 
 ## Dependencies
 
-- `Microsoft.Extensions.Configuration` (10.0.2)
+- `Microsoft.Extensions.Configuration` (10.0.9)
 - `Newtonsoft.Json` (13.0.4)
-- `Npgsql` (10.0.1) — PostgreSQL connector
+- `Npgsql` (10.0.3) — PostgreSQL connector
 - `AWSSDK.S3` — S3 image listing
 - `AWSSDK.SecretsManager` — Database credential retrieval
