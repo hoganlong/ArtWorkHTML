@@ -101,6 +101,26 @@ public partial class ArtworkHTML
             GROUP BY sketchbook_number
             ORDER BY sketchbook_number ASC";
 
+  const string photoStatsSQL = @"
+            SELECT
+                COUNT(*) as total_photos,
+                COUNT(DISTINCT cat) as total_categories,
+                MIN(yr) FILTER (WHERE yr > 1900) as earliest_year,
+                MAX(yr) FILTER (WHERE yr > 1900) as latest_year
+            FROM (
+                SELECT
+                    p.catagory ->> 0 as cat,
+                    COALESCE(NULLIF(p.year::int, 0), EXTRACT(YEAR FROM p.date)::int) as yr
+                FROM photo p
+            ) s";
+
+  const string photoCategoryDetailSQL = @"
+            SELECT pc.catagory as cat_name, COUNT(*) as photo_count
+            FROM photo p
+            LEFT JOIN photo_catagory pc ON p.catagory ->> 0 = pc.airtable_id
+            GROUP BY pc.catagory
+            ORDER BY pc.catagory NULLS LAST";
+
 
   private async Task GenerateStatisticsPage()
   {
@@ -218,6 +238,37 @@ public partial class ArtworkHTML
         sbDetailReader.IsDBNull(2) ? "" : sbDetailReader.GetDateTime(2).ToString("MMM d, yyyy"),
         sbDetailReader.IsDBNull(3) ? "" : sbDetailReader.GetDateTime(3).ToString("MMM d, yyyy")
       ));
+    }
+    await sbDetailReader.DisposeAsync();
+    await sbDetailCmd.DisposeAsync();
+
+    // Photo summary stats
+    int totalPhotos = 0, totalPhotoCategories = 0;
+    string? earliestPhotoYear = null, latestPhotoYear = null;
+    await using (var photoCmd = new NpgsqlCommand(photoStatsSQL, connection))
+    await using (var photoReader = await photoCmd.ExecuteReaderAsync())
+    {
+      if (await photoReader.ReadAsync())
+      {
+        totalPhotos = photoReader.IsDBNull(0) ? 0 : Convert.ToInt32(photoReader.GetValue(0));
+        totalPhotoCategories = photoReader.IsDBNull(1) ? 0 : Convert.ToInt32(photoReader.GetValue(1));
+        earliestPhotoYear = photoReader.IsDBNull(2) ? null : Convert.ToInt32(photoReader.GetValue(2)).ToString();
+        latestPhotoYear = photoReader.IsDBNull(3) ? null : Convert.ToInt32(photoReader.GetValue(3)).ToString();
+      }
+    }
+
+    // Photo category breakdown
+    var photoCategories = new List<(string Name, int Count)>();
+    await using (var pcCmd = new NpgsqlCommand(photoCategoryDetailSQL, connection))
+    await using (var pcReader = await pcCmd.ExecuteReaderAsync())
+    {
+      while (await pcReader.ReadAsync())
+      {
+        photoCategories.Add((
+          pcReader.IsDBNull(0) ? "Uncategorized" : pcReader.GetString(0),
+          Convert.ToInt32(pcReader.GetValue(1))
+        ));
+      }
     }
 
     // Build artwork year detail rows
@@ -381,6 +432,18 @@ public partial class ArtworkHTML
                 </tr>");
     }
 
+    // Build photo category detail rows
+    var photoCategoryRows = new StringBuilder();
+    foreach (var row in photoCategories)
+    {
+      photoCategoryRows.AppendLine($@"
+                <tr>
+                    <td>{EscapeHtml(row.Name)}</td>
+                    <td>{row.Count}</td>
+                    <td><a href='photo/{MakeTag(row.Name)}.html?back=../statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>browse</a></td>
+                </tr>");
+    }
+
     var html = new StringBuilder();
     html.AppendLine(GetHtmlHeader("Archive Statistics - Keith Long Archive"));
     html.AppendLine(@"
@@ -399,11 +462,11 @@ public partial class ArtworkHTML
         <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
 
         <h2>Artworks</h2>
-        <a href='artwork.html?show=all' class='nav-button nav-button-sm'>Browse All Artworks</a>
+        <a href='artwork.html?show=all&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>Browse All Artworks</a>
         <div class='stats-grid'>
             <div class='stat-card'>
                 <div class='stat-number'>" + totalArtworks + @"</div>
-                <div class='stat-label'>Total Artworks</div>
+                <div class='stat-label'>Total Artworks in Catalog</div>
             </div>
             <div class='stat-card'>
                 <div class='stat-number'>" + totalSeries + @"</div>
@@ -463,7 +526,7 @@ public partial class ArtworkHTML
         </details>
 
         <h2>Sketchbooks</h2>
-        <a href='sketchbooks.html?show=all' class='nav-button nav-button-sm'>Browse All Sketchbooks</a>
+        <a href='sketchbooks.html?show=all&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>Browse All Sketchbooks</a>
         <div class='stats-grid'>
             <div class='stat-card'>
                 <div class='stat-number'>" + totalSketchbooks + @"</div>
@@ -490,6 +553,31 @@ public partial class ArtworkHTML
                     </tr>
                 </thead>
                 <tbody>" + sketchbookRows + @"</tbody>
+            </table>
+        </details>
+
+        <h2>Photos</h2>
+        <a href='photo.html?back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>Browse All Photos</a>
+        <a href='artwork.html?tagtitle=Artwork%20w/%20Photos&amp;show=photo&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>Browse All Artworks w/ Photos</a>
+        <div class='stats-grid'>
+            <div class='stat-card'>
+                <div class='stat-number'>" + totalPhotos + @"</div>
+                <div class='stat-label'>Total Photos</div>
+            </div>
+            <div class='stat-card'>
+                <div class='stat-number'>" + totalPhotoCategories + @"</div>
+                <div class='stat-label'>Categories</div>
+            </div>
+            <div class='stat-card'>
+                <div class='stat-number'>" + earliestPhotoYear + " - " + latestPhotoYear + @"</div>
+                <div class='stat-label'>Year Range</div>
+            </div>
+        </div>
+        <details class='stats-details'>
+            <summary>Details</summary>
+            <table class='stats-table'>
+                <thead><tr><th>Category</th><th>Count</th><th></th></tr></thead>
+                <tbody>" + photoCategoryRows + @"</tbody>
             </table>
         </details>
 

@@ -503,18 +503,24 @@ public partial class ArtworkHTML
       }
     }
 
-    // 3. Every photo.file_location — photos are tracked in their own table and
-    //    should never be treated as unclassified scans, whether or not a show
-    //    happens to reference them.
+    // 3. Photos are tracked in their own table and should not be treated as
+    //    unclassified scans. Uses the same image URL the photo pages render
+    //    (file_location, else the synthesized sscan/KL_<code>_<image_number>
+    //    form), so both forms are covered.
+    //    EXCEPTION: Exhibition photos (photo_catagory.code = 'E') are kept on
+    //    the scans page UNLESS they're already referenced by a show — that way
+    //    exhibition photos still needing to be added to a show stay visible.
     await using (var cmd = new NpgsqlCommand(
-      @"SELECT file_location
-        FROM photo
-        WHERE file_location IS NOT NULL AND file_location <> ''", conn))
+      @"SELECT COALESCE(p.file_location, CONCAT('sscan/KL_', pc.code, '_', p.image_number)) AS url
+        FROM photo p
+        LEFT JOIN photo_catagory pc ON p.catagory ->> 0 = pc.airtable_id
+        WHERE COALESCE(pc.code, '') <> 'E'
+           OR p.id_field IN (SELECT photo_id FROM artlist_item WHERE photo_id IS NOT NULL)", conn))
     await using (var reader = await cmd.ExecuteReaderAsync())
     {
       while (await reader.ReadAsync())
       {
-        var bn = ExtractBasename(reader.GetString(0));
+        var bn = reader.IsDBNull(0) ? "" : ExtractBasename(reader.GetString(0));
         if (!string.IsNullOrEmpty(bn)) basenames.Add(bn);
       }
     }

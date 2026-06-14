@@ -202,6 +202,7 @@ namespace ArtWorkHTML
     public string[]? backFileName = null;
     public string[]? frontFileName = null;
     public string[]? polaroidFileName = null;
+    public string[]? photoFileName = null;
 
     public StatesType states=StatesType.NoImage;
     public bool hide = false;
@@ -240,6 +241,10 @@ namespace ArtWorkHTML
     {
       this.jpgURL = $"{baseURL}{path}jpg/{baseName}_{size}.jpg";
     }
+
+    // Pure-function variant of the sized-JPG convention (used for photo thumbnails).
+    public string MakeSizedURL(string path, string baseName, string size = "large")
+      => $"{baseURL}{path}jpg/{baseName}_{size}.jpg";
 
 
     public Artwork(string id, string iFileName, string title, string series, DateTime ctDate, string medium,string dimensions, string foldedDimensions, string location, string notes, string humanId, 
