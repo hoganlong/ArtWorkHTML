@@ -39,7 +39,7 @@ public partial class ArtworkHTML
             <p>It was created by his son Hogan Long to honor his father's work and to share it with a wider audience as his father wished.</p>
             <p>It includes photographs of paintings, drawings, sculptures and wall constructions,
             as well as scans of his sketchbooks, drawings, show announcements, reviews, and public media.</p>
-            <p>If you know of any pieces that are not included in the archive, please contact us at keithlongarchive AT gmail DOT com.</p>
+            <p>If you know of any pieces that are not included in the archive, please contact us at @@EMAIL@@.</p>
             <p>If you have a piece we have not included, please include a photo of the piece and any information you have about it,
             such as title, date, medium, dimensions, purchase date, and other relevant details.</p>
             <p>We also welcome comments or questions about the archive.</p>
@@ -115,6 +115,7 @@ public partial class ArtworkHTML
         });
     });
     </script>");
+    html.Replace("@@EMAIL@@", ObfuscatedEmailLink("keithlongarchive@gmail.com"));
     html.AppendLine(GetHtmlFooter());
 
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "index.html"), html.ToString());

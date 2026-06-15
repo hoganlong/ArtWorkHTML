@@ -8,9 +8,9 @@
     <_BuildYear>$([System.DateTime]::Now.ToString("yy"))</_BuildYear>
     <_BuildDay>$([System.String]::Format("{0:D3}", $([System.DateTime]::Now.DayOfYear)))</_BuildDay>
     <_BuildHour>$([System.DateTime]::Now.ToString("HH"))</_BuildHour>
-    <AssemblyVersion>0.3.0.0</AssemblyVersion>
-    <FileVersion>0.3.0.0</FileVersion>
-    <InformationalVersion>0.3.$(_BuildYear)$(_BuildDay)$(_BuildHour)</InformationalVersion>
+    <AssemblyVersion>0.3.1.0</AssemblyVersion>
+    <FileVersion>0.3.1.0</FileVersion>
+    <InformationalVersion>0.3.1.$(_BuildYear)$(_BuildDay)$(_BuildHour)</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

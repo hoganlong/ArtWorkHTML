@@ -123,6 +123,54 @@ public partial class ArtworkHTML
     return s.Replace(" ", "-").Replace(",", "").Replace("'", "").Replace("\"", "").Trim('-');
   }
 
+  // ---------------------------------------------------------------------------
+  // Email obfuscation. Cloudflare-style XOR, but with a twist: the XOR key is
+  // (first blob byte) XOR (last blob byte) — both random salts — instead of the
+  // standard cf-email scheme where the key IS the first byte. That breaks the
+  // off-the-shelf de-obfuscators/scrapers that hard-code key = byte[0], while a
+  // real JS-running browser decodes it fine. Blob layout (hex): [A][cipher...][B]
+  // where A,B are random, key = A^B (forced non-zero), cipher[i] = email[i]^key.
+  // NOTE: only defeats non-JS scrapers; a JS-executing scraper still resolves it.
+  // ---------------------------------------------------------------------------
+  private static readonly Random _emailRng = new Random();
+
+  private static string ObfuscateEmail(string email)
+  {
+    var data = System.Text.Encoding.UTF8.GetBytes(email);
+    int key = _emailRng.Next(1, 256);   // 1..255, never 0 -> always obfuscated
+    int a = _emailRng.Next(0, 256);     // random leading salt
+    int b = a ^ key;                    // trailing salt; a ^ b == key
+    var sb = new System.Text.StringBuilder((data.Length + 2) * 2);
+    sb.Append(a.ToString("x2"));
+    foreach (var d in data) sb.Append((d ^ key).ToString("x2"));
+    sb.Append(b.ToString("x2"));
+    return sb.ToString();
+  }
+
+  // Renders an <a> that JS turns into a real mailto link. Without JS only the
+  // fallback text shows and the address is NOT recoverable from the HTML.
+  private string ObfuscatedEmailLink(string email, string fallback = "email address (enable JavaScript)")
+  {
+    return $"<a class='eml' href='#' data-eml='{ObfuscateEmail(email)}'>{EscapeHtml(fallback)}</a>";
+  }
+
+  // Decoder injected once per page (via the footer). Recovers every a.eml using
+  // key = firstByte ^ lastByte, then decodes the middle bytes.
+  private static string GetEmailDecoderScript()
+  {
+    return @"(function(){
+  document.querySelectorAll('a.eml').forEach(function(a){
+    var h=a.getAttribute('data-eml')||'';
+    if(h.length<6||h.length%2!==0){return;}
+    var n=h.length/2;
+    var key=parseInt(h.substr(0,2),16)^parseInt(h.substr(h.length-2,2),16);
+    var s='';
+    for(var i=1;i<n-1;i++){s+=String.fromCharCode(parseInt(h.substr(i*2,2),16)^key);}
+    a.href='mailto:'+s; a.textContent=s; a.classList.remove('eml');
+  });
+})();";
+  }
+
   private static string GetTagsScript()
   {
     return @"(function() {
@@ -400,6 +448,7 @@ public partial class ArtworkHTML
         </nav>
         <p>Keith Long Archive | Generated {DateTime.Now:MMMM d, yyyy' at 'h:mm tt} | v{_version}</p>
     </footer>
+    <script>{GetEmailDecoderScript()}</script>
 </body>
 </html>";
   }
