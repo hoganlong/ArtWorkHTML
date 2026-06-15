@@ -18,7 +18,7 @@ public partial class ArtworkHTML
         <div class='landing-content'>
             <p>All the artwork on this site was created by my father and is copyright under his name.
              He passed away on September 27, 2025.  That means it will stay under copyright of the estate until 2095.
-             The copyright is now held by his estate, managed by his son Hogan Long — for copyright questions contact keithlongarchive AT gmail DOT com.</p>
+             The copyright is now held by his estate, managed by his son Hogan Long — for copyright questions contact @@EMAIL@@.</p>
             <p>Copyright requires the person holding the copyright to enforce it, so I will explain how I will enforce it here.</p>
             <p><b>TLDR;</b> Put a link to this website if you use pictures from here.  If unsure about use, contact us and get our ok to use this content.</p>
             <p>First understand my philosophy: if the work is being shared, enjoyed, or used for personal or creative purposes, I am in favor of it.
@@ -27,7 +27,7 @@ public partial class ArtworkHTML
              Some examples: a person loves a sketch and wants to print it out, frame it, and hang it on the wall to enjoy looking at every day.  This is fine.
              A person has a t-shirt company and wants to use reproductions of my dad's art on clothes they will sell.  That is not ok.  But if they contact me and
              I approve a design that includes the website url, then we have reached an agreement that costs them no money (we could also come to a cash agreement.)
-             Ok, those are the general examples — now I will be more specific.  General rule: if you are not sure, email keithlongarchive at gmail to get an answer.</p>
+             Ok, those are the general examples — now I will be more specific.  General rule: if you are not sure, email @@EMAIL@@ to get an answer.</p>
             <h2>Things that are ok</h2>
              <ul>
              <li><b>Reproduction in article or media</b> - This is fine.  I'd like a link to the website included if possible.</li>
@@ -54,6 +54,7 @@ public partial class ArtworkHTML
             <p><b>TLDR;</b> Put a link to this website if you use pictures from here.  If unsure about use, contact us and get our ok to use this content.</p>
         </div>
     </div>");
+    html.Replace("@@EMAIL@@", ObfuscatedEmailLink("keithlongarchive@gmail.com"));
     html.AppendLine(GetHtmlFooter());
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "copyright.html"), html.ToString());
   }
