@@ -58,7 +58,9 @@ public partial class ArtworkHTML
 
   private sealed class PhotoLookup
   {
-    public string FileLocation = "";
+    // file_location, or the synthesized sscan/KL_<code>_<image_number> form
+    // when file_location is null (matches the Photos/artwork-page convention).
+    public string ImageRef = "";
     public string Description = "";
   }
 
@@ -386,9 +388,9 @@ public partial class ArtworkHTML
     }
 
     if (item.PhotoId.HasValue && photoLookups.TryGetValue(item.PhotoId.Value, out var ph)
-        && !string.IsNullOrWhiteSpace(ph.FileLocation))
+        && !string.IsNullOrWhiteSpace(ph.ImageRef))
     {
-      (previewUrl, fullUrl) = BuildJpgUrls(ph.FileLocation.Trim());
+      (previewUrl, fullUrl) = BuildJpgUrls(ph.ImageRef.Trim());
       captionTitle = ph.Description;
       return true;
     }
@@ -628,15 +630,20 @@ public partial class ArtworkHTML
     await using var conn = new NpgsqlConnection(_connectionString);
     await conn.OpenAsync();
     await using var cmd = new NpgsqlCommand(
-      "SELECT id_field, file_location, description FROM photo WHERE id_field = ANY(@ids)", conn);
+      @"SELECT p.id_field,
+               COALESCE(p.file_location, CONCAT('sscan/KL_', pc.code, '_', p.image_number)) AS image_ref,
+               p.description
+        FROM photo p
+        LEFT JOIN photo_catagory pc ON p.catagory ->> 0 = pc.airtable_id
+        WHERE p.id_field = ANY(@ids)", conn);
     cmd.Parameters.AddWithValue("ids", ids);
     await using var reader = await cmd.ExecuteReaderAsync();
     while (await reader.ReadAsync())
     {
       dict[reader.GetInt32(0)] = new PhotoLookup
       {
-        FileLocation = reader.IsDBNull(1) ? "" : reader.GetString(1),
-        Description  = reader.IsDBNull(2) ? "" : reader.GetString(2),
+        ImageRef    = reader.IsDBNull(1) ? "" : reader.GetString(1),
+        Description = reader.IsDBNull(2) ? "" : reader.GetString(2),
       };
     }
     return dict;
