@@ -516,6 +516,7 @@ public partial class ArtworkHTML
     #region sketchbook list pages
     var lastSketchbookNumber = -1;
     List<int> sketchbookNumbers = sketchBookList.artworks.Values.Where(e => e.myType.HasFlag(ArtType.Sketch) && !e.hide && !e.deletefile).Select(a => a.sketchbookNumber).Distinct().OrderBy(n => n).ToList();
+    var sbMeta = LoadSketchbookMeta();
 
     // Ensure sketchbooks subdirectory exists
     var sketchbooksDir = Path.Combine(_outputDirectory, "sketchbooks");
@@ -559,6 +560,17 @@ public partial class ArtworkHTML
             else
               html.AppendLine($"<a href='sketchbook{entry}.html?show=all' class='nav-button sketchbook-nav-button'>{entry}</a>");
           }
+          html.AppendLine("</div>");
+        }
+
+        // Per-book date range + description from sketchbooks.xml (top of page).
+        if (sbMeta.Books.TryGetValue(bookNumber, out var bookMeta))
+        {
+          html.AppendLine("<div class='sketchbook-intro'>");
+          if (!string.IsNullOrEmpty(bookMeta.DateRange))
+            html.AppendLine($"  <p class='sketchbook-dates'>{EscapeHtml(bookMeta.DateRange)}</p>");
+          if (!string.IsNullOrEmpty(bookMeta.CommentHtml))
+            html.AppendLine($"  {bookMeta.CommentHtml}");
           html.AppendLine("</div>");
         }
 
@@ -634,11 +646,14 @@ public partial class ArtworkHTML
         <h1>Sketchbooks</h1>
         <p class='subtitle'><a id='back-link' href='index.html'>← Back to Home</a></p>
       </div>
-      <div class='landing-content'>
-        <p>Keith Long kept sketchbooks throughout his career, filling them with drawings, studies,
+      <div class='landing-content'>");
+    if (!string.IsNullOrEmpty(sbMeta.IntroHtml))
+      html.AppendLine(sbMeta.IntroHtml);
+    else
+      html.AppendLine(@"        <p>Keith Long kept sketchbooks throughout his career, filling them with drawings, studies,
            and observations made on location and in the studio. Each book is a record of a period
-           of his life and work. Browse any sketchbook below.</p>
-      </div>
+           of his life and work. Browse any sketchbook below.</p>");
+    html.AppendLine(@"      </div>
       <div class='navigation'>");
     foreach (var n in sketchbookNumbers)
       html.AppendLine($"<div class='nav-button-wrap'><a href='sketchbooks/sketchbook{n}.html?show=all' class='nav-button'>Sketchbook {n}</a><div class='coming-soon'>&nbsp;</div></div>");
