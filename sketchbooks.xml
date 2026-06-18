@@ -1,4 +1,11 @@
-<books>
+<sketch>
+  <intro>
+    <p>Forty-two sketchbooks were in Keith’s New York City loft, and one additional sketchbook was found in his studio in Paris. Beginning in 1982, the sketchbooks first document Keith’s time teaching drawing at Parsons in Paris and continue through the remainder of his life until his passing in 2025.</p>
+    <p>Together, these volumes provide an extraordinary record of Keith’s lifelong commitment to documentation. Through journal entries and drawings, he chronicles his teaching, extensive travels with his wife Ruth, time spent in the studio, exhibitions, and even his dreams. </p>
+    <p>While scans of drawings are shown on these pages, most of the journal entries have not been made available on the website, as they contain reflections on personal aspects of Keith’s life and family. The complete sketchbooks are available for research at the archives in the Bronx, New York City. 
+      Please contact <encryptemail>keithlongarchive@gmail.com</encryptemail> if you like to review them in person. </p>
+  </intro>
+  <books>
   <book number="1">
     <dates>
       <start>6/30/1982</start>
@@ -354,3 +361,4 @@
   </book>
 
 </books>
+</sketch>
