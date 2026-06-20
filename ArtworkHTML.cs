@@ -468,9 +468,9 @@ public partial class ArtworkHTML
     return @"<div id='lightbox' class='lightbox'>
   <div class='lightbox-overlay'></div>
   <div class='lightbox-container'>
-    <button class='lightbox-close' title='Close (Esc)'>&#x2715;</button>
     <button class='lightbox-prev' title='Previous artwork (&#8592;)'>&#10094;</button>
     <div class='lightbox-content'>
+      <button class='lightbox-close' title='Close (Esc)'>&#x2715;</button>
       <img class='lightbox-img' src='' alt='' />
       <div class='lightbox-view-nav' style='display:none'>
         <button class='lightbox-view-prev' title='Previous view (&#8593;)'>&#10094;</button>
