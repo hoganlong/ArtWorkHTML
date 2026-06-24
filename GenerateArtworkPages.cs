@@ -1016,8 +1016,8 @@ public partial class ArtworkHTML
           {
             if (!string.IsNullOrEmpty(name))
             {
-              var url = art.MakeJPGURL(name);
-              thumbButtons.Add($"<a href='{url}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{filethumb.label}(L){(hasMult?" "+curNum.ToString(): "")}'><img src='{url}' width='40' height='40' data-large-src='{url}' onload='applyThumbSize(this)' loading='lazy' /></a>");
+              var (preview, full) = BuildJpgUrls(name);
+              thumbButtons.Add($"<a href='{full}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{filethumb.label}(L){(hasMult?" "+curNum.ToString(): "")}'><img src='{preview}' width='40' height='40' data-large-src='{preview}' onload='applyThumbSize(this)' loading='lazy' /></a>");
             }
             curNum++;
           }
