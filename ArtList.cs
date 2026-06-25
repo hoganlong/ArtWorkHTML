@@ -202,7 +202,13 @@ namespace ArtWorkHTML
     public string[]? backFileName = null;
     public string[]? frontFileName = null;
     public string[]? polaroidFileName = null;
+    public string[]? paperFileName = null;     // direct-URL Paper view
     public string[]? photoFileName = null;
+
+    // Catch-all: images whose view isn't Back/Front/Paper/Polaroid (incl. blank).
+    // Pairs of (actual view text, value) so the hover title can show the view.
+    public List<(string View, int Id)>? otherImages = null;     // attachment
+    public List<(string View, string Url)>? otherFiles = null;  // direct-URL
 
     public StatesType states=StatesType.NoImage;
     public bool hide = false;
