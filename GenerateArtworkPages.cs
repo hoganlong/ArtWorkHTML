@@ -47,6 +47,20 @@ public partial class ArtworkHTML
           select array_to_string(array_agg(url), ', ') as dirimgs, artwork_id, lview
           from dirimg
           group by artwork_id, dirimg.lview
+        ), imgOther as   -- attachment images whose view is not Back/Front/Paper/Polaroid (incl. blank)
+        (                 -- flattened as view---id---view---id---... (--- never appears in view/id text)
+          select string_agg(COALESCE(NULLIF(TRIM(view), ''), 'Other') || '---' || id_field::text, '---' order by id_field) as items, artwork_id
+          from artwork_image
+          where url is null
+            and (view is null or (view not like 'Back%' and view not like 'Front%' and view not like 'Paper%' and view not like 'Polaroid%'))
+          group by artwork_id
+        ), dirimgOther as   -- direct-URL images whose view is not Back/Front/Paper/Polaroid (incl. blank)
+        (                   -- flattened as view---url---view---url---...
+          select string_agg(COALESCE(NULLIF(TRIM(view), ''), 'Other') || '---' || url, '---' order by id_field) as items, artwork_id
+          from artwork_image
+          where url is not null
+            and (view is null or (view not like 'Back%' and view not like 'Front%' and view not like 'Paper%' and view not like 'Polaroid%'))
+          group by artwork_id
         ), photimgList as
         (
           SELECT
@@ -76,7 +90,10 @@ public partial class ArtworkHTML
           diri_polaroid.dirimgs AS polaroid_imgs,  -- 18
           t.code, t.description as type_desc, -- 19, 20
           a.unsigned, -- 21
-          phimg.URLLIST AS photo_imgs -- 22
+          phimg.URLLIST AS photo_imgs, -- 22
+          diri_paper.dirimgs as paper_imgs, -- 23  direct-URL Paper view
+          img_other.items as other_atch,    -- 24  attachment, non-standard view (view---id pairs)
+          diri_other.items as other_dir     -- 25  direct-URL, non-standard view (view---url pairs)
         FROM artwork a
         LEFT JOIN artwork_type t ON a.type_id ->> 0 = t.airtable_id
         LEFT JOIN imgGroup ai_back ON a.airtable_id = ai_back.artwork_id AND ai_back.lview    ='Back'
@@ -86,6 +103,9 @@ public partial class ArtworkHTML
         LEFT JOIN dirimgGroup diri_back ON a.airtable_id = diri_back.artwork_id AND diri_back.lview    ='Back'
         LEFT JOIN dirimgGroup diri_front ON a.airtable_id = diri_front.artwork_id AND diri_front.lview ='Fron'
         LEFT JOIN dirimgGroup diri_polaroid ON a.airtable_id = diri_polaroid.artwork_id AND diri_polaroid.lview ='Pola'
+        LEFT JOIN dirimgGroup diri_paper ON a.airtable_id = diri_paper.artwork_id AND diri_paper.lview ='Pape'
+        LEFT JOIN imgOther img_other ON a.airtable_id = img_other.artwork_id
+        LEFT JOIN dirimgOther diri_other ON a.airtable_id = diri_other.artwork_id
         LEFT JOIN photoimgGroup phimg ON a.AIRTABLE_ID = phimg.ARTWORK_AIRTABLE_ID
         ORDER BY a.human_readable_id, a.create_dt ASC NULLS last";
 
@@ -100,6 +120,32 @@ public partial class ArtworkHTML
               s.hide, s.deletefile
        FROM sketch s
        ORDER BY s.sketchbook_number ASC, s.page_number ASC";
+
+  // Catch-all "other" images arrive from SQL flattened as view---value---view---value---...
+  // ("---" never appears in a view name or filename), so just split and pair them up.
+  private const string OtherSep = "---";
+
+  private static List<(string View, int Id)>? ParseViewIdPairs(string? s)
+  {
+    if (string.IsNullOrEmpty(s)) return null;
+    var p = s.Split(OtherSep);
+    var list = new List<(string View, int Id)>();
+    for (int i = 0; i + 1 < p.Length; i += 2)
+      if (int.TryParse(p[i + 1].Trim(), out int id) && id != 0)
+        list.Add((p[i], id));
+    return list.Count > 0 ? list : null;
+  }
+
+  private static List<(string View, string Url)>? ParseViewUrlPairs(string? s)
+  {
+    if (string.IsNullOrEmpty(s)) return null;
+    var p = s.Split(OtherSep);
+    var list = new List<(string View, string Url)>();
+    for (int i = 0; i + 1 < p.Length; i += 2)
+      if (!string.IsNullOrWhiteSpace(p[i + 1]))
+        list.Add((p[i], p[i + 1].Trim()));
+    return list.Count > 0 ? list : null;
+  }
 
   private async Task GenerateArtworkPages()
   {
@@ -133,6 +179,9 @@ public partial class ArtworkHTML
       var frontFileName = reader.IsDBNull(17) ? null : reader.GetString(17).Split(',').Select(s => s.Trim()).ToArray();
       var polaroidFileName = reader.IsDBNull(18) ? null : reader.GetString(18).Split(',').Select(s => s.Trim()).ToArray();
       var photoFileName = reader.IsDBNull(22) ? null : reader.GetString(22).Split(',').Select(s => s.Trim()).ToArray();
+      var paperFileName = reader.IsDBNull(23) ? null : reader.GetString(23).Split(',').Select(s => s.Trim()).ToArray();
+      var otherImages = ParseViewIdPairs(reader.IsDBNull(24) ? null : reader.GetString(24));
+      var otherFiles = ParseViewUrlPairs(reader.IsDBNull(25) ? null : reader.GetString(25));
 
 
       Artwork artwork = new(reader.GetInt32(0).ToString(), reader.IsDBNull(1) ? "" : reader.GetString(1),
@@ -145,6 +194,9 @@ public partial class ArtworkHTML
           backId, frontId, paperId, polaroidId,backFileName, frontFileName, polaroidFileName);
       artwork.unsigned = !reader.IsDBNull(21) && reader.GetBoolean(21);
       artwork.photoFileName = photoFileName;
+      artwork.paperFileName = paperFileName;
+      artwork.otherImages = otherImages;
+      artwork.otherFiles = otherFiles;
 
       artList.AddArtwork(artwork);
     } // while reader.ReadAsync()
@@ -980,6 +1032,7 @@ public partial class ArtworkHTML
       {
         ("Front", art.frontFileName),
         ("Back", art.backFileName),
+        ("Paper", art.paperFileName),
         ("Polaroid", art.polaroidFileName)
       };
 
@@ -1023,6 +1076,24 @@ public partial class ArtworkHTML
           }
         }
       }
+
+      // Catch-all attachment images — hover title is the actual view text.
+      if (art.otherImages is not null)
+        foreach (var (view, id) in art.otherImages)
+        {
+          var thumbUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "small");
+          var fullUrl  = string.Format(S3_ARTWORK_IMAGE_URL, id, "full");
+          var largeUrl = string.Format(S3_ARTWORK_IMAGE_URL, id, "large");
+          thumbButtons.Add($"<a href='{fullUrl}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{EscapeHtml(view)}'><img src='{thumbUrl}' width='40' height='40' data-large-src='{largeUrl}' onload='applyThumbSize(this)' loading='lazy' /></a>");
+        }
+
+      // Catch-all direct-URL images — hover title is the actual view text.
+      if (art.otherFiles is not null)
+        foreach (var (view, url) in art.otherFiles)
+        {
+          var (preview, full) = BuildJpgUrls(url);
+          thumbButtons.Add($"<a href='{full}' target='_blank' rel='noopener noreferrer' class='thumb-button' title='{EscapeHtml(view)}'><img src='{preview}' width='40' height='40' data-large-src='{preview}' onload='applyThumbSize(this)' loading='lazy' /></a>");
+        }
 
       if (art.photoFileName is not null && art.photoFileName.Length > 0)
       {
