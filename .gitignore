@@ -55,3 +55,6 @@ nunit-*.xml
 *.html
 *.css
 *.js
+
+# Local secrets - do not commit
+appsettings.json
