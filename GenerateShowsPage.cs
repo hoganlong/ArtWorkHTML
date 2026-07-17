@@ -7,7 +7,7 @@ namespace ArtWorkHTML;
 
 public partial class ArtworkHTML
 {
-  private const string ShowsBaseUrl = "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/";
+  private const string ShowsBaseUrl = ImageBaseUrl;
 
   private sealed class ShowRow
   {

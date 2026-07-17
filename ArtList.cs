@@ -161,7 +161,7 @@ namespace ArtWorkHTML
   
   public class Artwork
   {
-    static readonly string baseURL = "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/";
+    static readonly string baseURL = ArtworkHTML.ImageBaseUrl;
 
     // Data elements
     public ArtType myType = ArtType.None;

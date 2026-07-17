@@ -16,7 +16,12 @@ using System.Collections.Generic;
 
 public partial class ArtworkHTML
 {
-  const string S3_ARTWORK_IMAGE_URL = "https://keithlong-art-photos.s3.us-east-1.amazonaws.com/atch/artwork_{0}_{1}.jpg";
+  // Single source of truth for the image host. Photos are served through the
+  // photos CloudFront distribution (not the raw S3 bucket). To switch hosts
+  // (e.g. to https://photos.keithlong.com/ once that domain is set up), change
+  // ONLY this line.
+  public const string ImageBaseUrl = "https://photos.keithlong.com/";
+  const string S3_ARTWORK_IMAGE_URL = ImageBaseUrl + "atch/artwork_{0}_{1}.jpg";
 
   const string artworkSQL = @"
 
