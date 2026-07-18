@@ -93,7 +93,9 @@ class Program
           dbCredentials = await GetDatabaseCredentialsFromSecretsManager(secretArn);
           Console.WriteLine("✓ Database credentials retrieved successfully\n");
         }
-        var postgresConnectionString = $"Host={host};Port={port};Database={database};Username={dbCredentials.username};Password={dbCredentials.password};SSL Mode=Require;Trust Server Certificate=true";
+        // Timeout=60: Aurora can be idle/scaled-down and take longer than Npgsql's
+        // default 15s to accept the first connection (cold start / resume from pause).
+        var postgresConnectionString = $"Host={host};Port={port};Database={database};Username={dbCredentials.username};Password={dbCredentials.password};SSL Mode=Require;Trust Server Certificate=true;Timeout=60";
 
 
         if (args.Length > 0 && args[0] == "test-airtable")
