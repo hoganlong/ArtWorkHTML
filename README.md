@@ -8,7 +8,9 @@ A .NET 10 console application that generates a static HTML website from artwork 
 - Reads images from AWS S3 bucket (`keithlong-art-photos`, us-east-1)
 - Retrieves database credentials securely from AWS Secrets Manager
 - Generates multiple HTML pages:
-  - `index.html` — Landing/navigation page with centered content layout
+  - `index.html` — Landing/navigation page with centered content layout. Carries an "Admin only" link to `admin.html`; the Polaroids and Scans buttons now live on the admin page rather than here
+  - `admin.html` — Password-gated admin/development page (client-side **soft** gate only — not real security). Consolidates the dev links (Errors, Polaroids, Scans) and renders the current run's error summary below the buttons
+  - `errors.html` — Gallery of just the artworks that have one or more errors (same layout as `artwork.html`; errors render in red)
   - `statistics.html` — Stats with collapsible details: Artworks section (tabbed By Year / By Series / By Location / By Type, each with browse buttons), Sketchbooks section (per-book table), and Photos section (Total Photos / Categories / Year Range stat cards + a per-category details table). Every section-level "Browse All …" button carries `back=statistics.html` so the destination shows a "Return to Statistics" link
   - `artwork.html` — Main gallery with thumbnails (including photo-table images), type filter, hover effects, tag-driven visibility
   - `polaroids.html` — Polaroid scan gallery
@@ -154,7 +156,7 @@ Skipped steps are printed in gray so you can see what was bypassed. Any step fai
 - `notes` — Additional notes
 - `human_readable_id` — Human-readable identifier. Format: `KL_{year}_{typeCode}_{number}`
   where year is 4-digit creation year, typeCode is the single-letter artwork type code
-  (W/D/S/C/J/P/B/N), and number is zero-padded to 4 digits. Example: `KL_1982_D_0042`.
+  (W/D/S/C/J/P/B/N/T/L), and number is zero-padded to 4 digits. Example: `KL_1982_D_0042`.
 - `artwork_image_id` — Legacy image identifier
 - `type_id` — Foreign key to `artwork_type` (stored as JSON array)
 
@@ -166,7 +168,7 @@ Skipped steps are printed in gray so you can see what was bypassed. Any step fai
 
 ### `artwork_type` table
 - `airtable_id` — Matches `artwork.type_id`
-- `code` — Single-letter type code (W, D, S, C, J, P, B, N)
+- `code` — Single-letter type code (W, D, S, C, J, P, B, N, T, L). T = Study / Sketch, L = Collage
 - `description` — Display name
 
 ### `sketch` table
@@ -194,6 +196,7 @@ ArtWorkHTML/
 ├── ArtworkHTML.cs              — Core helpers: GetHtmlHeader/Footer, GetTagsScript, GetTypeTag,
 │                                 MakeTag, TypeDescriptions, TypeTags (partial class)
 ├── GenerateIndexPage.cs        — Landing page generation (partial class)
+├── GenerateAdminPage.cs        — admin.html; client-side soft-gated dev page + error summary (partial class)
 ├── GenerateStylesheet.cs       — CSS stylesheet generation (partial class)
 ├── GenerateArtworkPages.cs     — Gallery page generation (partial class)
 ├── GenerateStatisticsPage.cs   — Statistics page generation (partial class)
