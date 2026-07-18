@@ -74,7 +74,9 @@ public partial class ArtworkHTML
     {"J",	"Jewelry"},
     {"P",	"Painting (non-canvas)"},
     {"B",	"Broach"},
-    {"N",	"Necklace"}
+    {"N",	"Necklace"},
+    {"T",	"Study / Sketch"},
+    {"L",	"Collage"}
     // Add entries as needed; any code not listed falls back to "Description {code}"
   };
 
@@ -93,7 +95,9 @@ public partial class ArtworkHTML
     {"J", "Jewelry"},
     {"P", "Painting-NonCanvas"},
     {"B", "Broach"},
-    {"N", "Necklace"}
+    {"N", "Necklace"},
+    {"T", "Study-Sketch"},
+    {"L", "Collage"}
   };
 
   private string GetTypeTag(string? typeCode)
@@ -110,10 +114,12 @@ public partial class ArtworkHTML
   private static readonly List<ArtworkTypePage> ArtworkTypePages = new()
   {
     new("artwork-canvas.html",             "Canvas",                 new[] { "C" }),
+    new("artwork-collage.html",            "Collage",                new[] { "L" }),
     new("artwork-drawing.html",            "Drawing",                new[] { "D" }),
     new("artwork-jewelry.html",            "Jewelry",                new[] { "B", "N", "J" }),
     new("artwork-painting-noncanvas.html", "Painting (Non-Canvas)",  new[] { "P" }),
     new("artwork-sculpture-nonwall.html",  "Sculpture (Non-Wall)",   new[] { "S" }),
+    new("artwork-study-sketch.html",       "Study / Sketch",         new[] { "T" }),
     new("artwork-wall-sculpture.html",     "Wall Hanging Sculptures", new[] { "W" }),
   };
 
@@ -298,6 +304,7 @@ public partial class ArtworkHTML
   {
     CleanOutputDirectory();
     await GenerateIndexPage();
+    await GenerateAdminPage();
     await GenerateCopyrightPage();
     await GenerateHowIsMadePage();
     await GenerateCreditsPage();
@@ -308,6 +315,7 @@ public partial class ArtworkHTML
     await GenerateLightboxScript();
 
     Console.WriteLine("  ✓ index.html - Landing page");
+    Console.WriteLine("  ✓ admin.html - Admin page (password-gated)");
     Console.WriteLine("  ✓ copyright.html");
     Console.WriteLine("  ✓ howisitmade.html");
     Console.WriteLine("  ✓ credits.html");
@@ -326,6 +334,9 @@ public partial class ArtworkHTML
     await GenerateArtworkPages();
     await GenerateShowsPage();
     await GeneratePhotoPages();
+    // Generated after the data pages so the error summary below the admin buttons
+    // reflects this run's actual counts (populated during GenerateArtworkPages).
+    await GenerateAdminPage(BuildErrorSummaryLines());
     await GenerateCopyrightPage();
     await GenerateHowIsMadePage();
     await GenerateCreditsPage();
@@ -364,6 +375,7 @@ public partial class ArtworkHTML
     await GenerateLightboxScript();
 
     Console.WriteLine("  ✓ index.html - Landing page");
+    Console.WriteLine("  ✓ admin.html - Admin page (password-gated)");
     Console.WriteLine("  ✓ statistics.html - Archive statistics");
     Console.WriteLine("  ✓ artwork.html - Complete artwork list");
     Console.WriteLine("  ✓ scans.html - Scan files not in database");

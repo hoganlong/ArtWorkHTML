@@ -29,6 +29,7 @@ public partial class ArtworkHTML
     var html = new StringBuilder();
     html.AppendLine(GetHtmlHeader("Keith Long Archive"));
     html.AppendLine($@"
+    <a href='admin.html' class='admin-only-link'>Admin only</a>
     <div class='container landing-page'>
         <div class='landing-header'>
             <h1>Keith Long Archive</h1>
@@ -46,8 +47,6 @@ public partial class ArtworkHTML
         </div>
         <div class='navigation'>
             <div class='nav-button-wrap'>{browseButton}<div class='coming-soon'>&nbsp;</div></div>
-            <div class='nav-button-wrap'><a href='polaroids.html?show=all' class='nav-button'>Polaroids</a><div class='coming-soon'>&nbsp;</div></div>
-            <div class='nav-button-wrap'><a href='scans.html' class='nav-button'>Scans</a><div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><a href='sketchbooks.html' class='nav-button'>Sketchbooks</a><div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><a href='shows.html' class='nav-button'>Shows</a><div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><a href='photo.html' class='nav-button'>Photos</a><div class='coming-soon'>&nbsp;</div></div>

@@ -483,6 +483,19 @@ public partial class ArtworkHTML
       Console.WriteLine($"  ✓ {typePage.FileName}");
     }
 
+    // Admin/dev page: same gallery as artwork.html but only the items that have an
+    // error (errors render in red). art.errors is already populated by the pre-pass
+    // and the earlier image-resolution passes. trackErrors:false so we don't
+    // re-count or re-emit the summary comment.
+    var erroredArtworks = artList.artworks.Values.Where(a => a.errors.Count > 0);
+    await WriteArtworkGalleryPage(
+      "errors.html",
+      "Artworks with Errors",
+      erroredArtworks,
+      includeTypeFilter: true,
+      trackErrors: false);
+    Console.WriteLine("  ✓ errors.html");
+
     var html = new StringBuilder();
 
     #region polaroid list page
@@ -494,7 +507,7 @@ public partial class ArtworkHTML
     html.AppendLine(@"
     <div class='container'>
         <h1>Polaroids</h1>
-        <p class='subtitle'><a id='back-link' href='index.html'>← Back to Home</a></p>
+        <p class='subtitle'><a id='back-link' href='admin.html'>← Back to Admin</a></p>
     </div>
     <div class='page-controls'>
         <span class='page-controls-label'>Hover effects:</span>

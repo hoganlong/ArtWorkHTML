@@ -237,6 +237,23 @@ h1 {
     font-size: 0.85em;
 }
 
+.admin-only-link {
+    position: absolute;
+    top: 48px;
+    right: 16px;
+    z-index: 50;
+    background: #7f8c8d;
+    color: #fff;
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 0.8em;
+}
+
+.admin-only-link:hover {
+    background: #2c3e50;
+}
+
 .nav-button.active {
     background: #2c3e50;
     cursor: default;
