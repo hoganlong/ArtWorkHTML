@@ -251,12 +251,16 @@ public partial class ArtworkHTML
 
     html.AppendLine(RenderShowMetadata(show));
 
-    if (byType.TryGetValue("SHOW_INVITE_FRONT", out var invitesFront) && invitesFront.Count > 0
-        || byType.TryGetValue("SHOW_INVITE_BACK", out var invitesBack) && invitesBack.Count > 0)
+    // Invitation section: front, optional middle page(s), and back. A two-item
+    // invite (front + back) renders exactly as before. When middle items exist the
+    // invite has more than two pages, so ordering is driven entirely by the
+    // sequence value (lowest first) to place front → middle(s) → back correctly.
+    var invites = new List<ArtlistItemRow>();
+    if (byType.TryGetValue("SHOW_INVITE_FRONT", out var invF)) invites.AddRange(invF);
+    if (byType.TryGetValue("SHOW_INVITE_MIDDLE", out var invM)) invites.AddRange(invM);
+    if (byType.TryGetValue("SHOW_INVITE_BACK", out var invB)) invites.AddRange(invB);
+    if (invites.Count > 0)
     {
-      var invites = new List<ArtlistItemRow>();
-      if (byType.TryGetValue("SHOW_INVITE_FRONT", out var f)) invites.AddRange(f);
-      if (byType.TryGetValue("SHOW_INVITE_BACK", out var b)) invites.AddRange(b);
       html.AppendLine("        <h2>Invitation</h2>");
       html.AppendLine("        <div class='gallery show-invites'>");
       foreach (var item in invites.OrderBy(i => i.Sequence ?? int.MaxValue).ThenBy(i => i.Id))
