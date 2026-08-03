@@ -503,7 +503,7 @@ public partial class ArtworkHTML
 </head>
 <body>
 <div class='site-notice'>
-    &#128221; <strong>Now in alpha testing</strong> &mdash; everyone is asked to send bugs and comments to {ObfuscatedEmailLink("keithlongarchive@gmail.com", "our email address (enable JavaScript)")}.
+    <strong>Now in alpha testing</strong> &mdash; everyone is asked to send bugs and comments to {ObfuscatedEmailLink("keithlongarchive@gmail.com", "our email address (enable JavaScript)")}.
 </div>
   ";
   }
