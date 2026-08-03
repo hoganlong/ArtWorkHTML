@@ -538,6 +538,14 @@ footer {
     border-bottom: 1px solid #d0c8b8;
     letter-spacing: 0.02em;
   }
+  /* Links in the notice (e.g. the decoded contact email) must stay legible on the
+     blue background — the default link color is nearly invisible there. */
+  .site-notice a, .site-notice a:visited {
+    color: #ffffff;
+    font-weight: 600;
+    text-decoration: underline;
+  }
+  .site-notice a:hover { color: #ffe08a; }
 
   .page-controls {
     display: flex;
