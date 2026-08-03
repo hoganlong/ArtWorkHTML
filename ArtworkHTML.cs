@@ -63,6 +63,29 @@ public partial class ArtworkHTML
       ?.InformationalVersion.Split('+')[0] ?? "";
 
   // -----------------------------------------------------------------------
+  // SEO / social metadata
+  // -----------------------------------------------------------------------
+  public const string SiteBaseUrl = "https://archive.keithlong.com/";   // trailing slash
+  private const string SiteName = "Keith Long Archive";
+  private const string SiteAuthor = "Keith Long";                        // the artist (creator)
+  private const string SiteDefaultDescription =
+    "The Keith Long Archive — the catalogued works of artist Keith Long: paintings, drawings, "
+    + "sculpture, jewelry, collage, and sketchbooks.";
+  // Default social-share (Open Graph / Twitter) image, absolute URL. Used on every
+  // page unless a page passes its own ogImage.
+  private static readonly string SiteDefaultOgImage = ImageBaseUrl + "jpg/_U1A3523_20122W11.jpg";
+
+  // Root-relative paths of indexable pages, collected as headers are built (see
+  // GetHtmlHeader) and written out by GenerateSitemapAndRobots.
+  private readonly List<string> _sitemapPaths = new();
+
+  // Attribute-safe escaping for single-quoted HTML attributes (handles apostrophes
+  // like "Keith Long's", which plain EscapeHtml may leave unescaped).
+  private static string EscapeAttr(string? s) =>
+    (s ?? "").Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
+             .Replace("\"", "&quot;").Replace("'", "&#39;");
+
+  // -----------------------------------------------------------------------
   // Type code descriptions — update the values here to replace placeholders
   // -----------------------------------------------------------------------
   private static readonly Dictionary<string, string> TypeDescriptions = new(StringComparer.OrdinalIgnoreCase)
@@ -373,6 +396,7 @@ public partial class ArtworkHTML
     await GenerateOpensourcePage();
     await GenerateStylesheet();
     await GenerateLightboxScript();
+    await GenerateSitemapAndRobots();
 
     Console.WriteLine("  ✓ index.html - Landing page");
     Console.WriteLine("  ✓ admin.html - Admin page (password-gated)");
@@ -427,23 +451,88 @@ public partial class ArtworkHTML
       return ("");
   }
 
-  private string GetHtmlHeader(string title, string pathPrefix = "")
+  // Builds the page <head> + opening banner.
+  //   canonicalPath : root-relative path of THIS page ("" = home). null = no canonical
+  //                   and the page is left out of the sitemap.
+  //   description   : page-specific meta description (falls back to the site default).
+  //   ogImage       : absolute image URL for social cards (falls back to the site default).
+  //   ogType        : "website" (default) or "article" for detail pages.
+  //   noindex       : true for dev/admin/hidden pages -> robots noindex,nofollow and
+  //                   excluded from the sitemap.
+  private string GetHtmlHeader(string title, string pathPrefix = "",
+      string? canonicalPath = null, string? description = null,
+      string? ogImage = null, string ogType = "website", bool noindex = false)
   {
+    var desc = string.IsNullOrWhiteSpace(description) ? SiteDefaultDescription : description!;
+    var img = string.IsNullOrWhiteSpace(ogImage) ? SiteDefaultOgImage : ogImage!;
+    var robots = noindex ? "noindex, nofollow" : "index, follow";
+
+    string canonical = "", ogUrl = "";
+    if (canonicalPath != null)
+    {
+      var abs = SiteBaseUrl + canonicalPath;
+      canonical = $"\n    <link rel='canonical' href='{EscapeAttr(abs)}'>";
+      ogUrl = $"\n    <meta property='og:url' content='{EscapeAttr(abs)}'>";
+      if (!noindex && !_sitemapPaths.Contains(canonicalPath))
+        _sitemapPaths.Add(canonicalPath);
+    }
+
+    var d = EscapeAttr(desc);
+    var t = EscapeAttr(title);
     return $@"<!DOCTYPE html>
 <html lang='en'>
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>{EscapeHtml(title)}</title>
+    <meta name='description' content='{d}'>
+    <meta name='author' content='{SiteAuthor}'>
+    <meta name='robots' content='{robots}'>{canonical}
+    <meta property='og:site_name' content='{SiteName}'>
+    <meta property='og:type' content='{EscapeAttr(ogType)}'>
+    <meta property='og:title' content='{t}'>
+    <meta property='og:description' content='{d}'>{ogUrl}
+    <meta property='og:image' content='{EscapeAttr(img)}'>
+    <meta property='og:locale' content='en_US'>
+    <meta name='twitter:card' content='summary_large_image'>
+    <meta name='twitter:title' content='{t}'>
+    <meta name='twitter:description' content='{d}'>
+    <meta name='twitter:image' content='{EscapeAttr(img)}'>
     <link rel='icon' type='image/png' href='/favicon.png'>
     <link rel='stylesheet' href='{pathPrefix}style.css'>
 </head>
 <body>
 <div class='site-notice'>
-    &#128274; This website is <strong>not open to the public</strong> &mdash; it is in development.
-    All images and content are &copy; Estate of Keith Long.
+    &#128221; <strong>Now in alpha testing</strong> &mdash; everyone is asked to send bugs and comments to {ObfuscatedEmailLink("keithlongarchive@gmail.com", "our email address (enable JavaScript)")}.
 </div>
   ";
+  }
+
+  // Writes robots.txt + sitemap.xml. robots.txt allows all crawling and points at
+  // the sitemap; dev/admin/hidden pages stay out of the index via their per-page
+  // noindex meta (so crawlers can still read that directive) and are simply not
+  // listed in the sitemap. Call AFTER all pages are generated so _sitemapPaths is
+  // fully populated.
+  private async Task GenerateSitemapAndRobots()
+  {
+    var robots = "User-agent: *\nAllow: /\n\nSitemap: " + SiteBaseUrl + "sitemap.xml\n";
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "robots.txt"), robots);
+
+    var lastmod = DateTime.UtcNow.ToString("yyyy-MM-dd");
+    var sb = new StringBuilder();
+    sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+    sb.AppendLine("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">");
+    foreach (var path in _sitemapPaths.Distinct().OrderBy(p => p, StringComparer.Ordinal))
+    {
+      var loc = (SiteBaseUrl + path).Replace("&", "&amp;");
+      sb.AppendLine("  <url>");
+      sb.AppendLine($"    <loc>{loc}</loc>");
+      sb.AppendLine($"    <lastmod>{lastmod}</lastmod>");
+      sb.AppendLine("  </url>");
+    }
+    sb.AppendLine("</urlset>");
+    await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "sitemap.xml"), sb.ToString());
+    Console.WriteLine($"  ✓ robots.txt + sitemap.xml ({_sitemapPaths.Distinct().Count()} URLs)");
   }
 
   private string GetHtmlFooter(string pathPrefix = "")

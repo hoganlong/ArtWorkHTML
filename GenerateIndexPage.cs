@@ -27,7 +27,8 @@ public partial class ArtworkHTML
               </div>";
 
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader("Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Keith Long Archive", canonicalPath: "",
+      description: "The Keith Long Archive — browse the catalogued paintings, drawings, sculpture, jewelry, collage, and sketchbooks of artist Keith Long."));
     html.AppendLine($@"
     <a href='admin.html' class='admin-only-link'>Admin only</a>
     <div class='container landing-page'>

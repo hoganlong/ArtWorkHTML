@@ -112,7 +112,9 @@ public partial class ArtworkHTML
     var slug = MakeTag(catName);
 
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader($"{catName} Photos - Keith Long Archive", pathPrefix));
+    html.AppendLine(GetHtmlHeader($"{catName} Photos - Keith Long Archive", pathPrefix,
+      canonicalPath: $"photo/{slug}.html",
+      description: $"{catName} photographs from the Keith Long Archive."));
     html.AppendLine($@"
     <div class='container'>
         <h1>{EscapeHtml(catName)} Photos</h1>
@@ -153,7 +155,8 @@ public partial class ArtworkHTML
   private async Task WritePhotoIndex(List<PhotoCategory> categories, Dictionary<string, List<PhotoRow>> groups)
   {
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader("Photos - Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Photos - Keith Long Archive", canonicalPath: "photo.html",
+      description: "Photographs from the Keith Long Archive, organized by category."));
     html.AppendLine(@"
     <div class='container landing-page'>
       <div class='landing-header'>

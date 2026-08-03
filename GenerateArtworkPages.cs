@@ -468,7 +468,8 @@ public partial class ArtworkHTML
       "All Artworks",
       artList.artworks.Values,
       includeTypeFilter: true,
-      trackErrors: true);
+      trackErrors: true,
+      metaDescription: "Browse the complete catalog of artist Keith Long's artwork — paintings, drawings, sculpture, jewelry, collage, and more.");
 
     foreach (var typePage in ArtworkTypePages)
     {
@@ -479,7 +480,8 @@ public partial class ArtworkHTML
         $"Artwork - {typePage.Title}",
         filtered,
         includeTypeFilter: false,
-        trackErrors: false);
+        trackErrors: false,
+        metaDescription: $"{typePage.Title} works from the Keith Long art archive.");
       Console.WriteLine($"  ✓ {typePage.FileName}");
     }
 
@@ -493,7 +495,8 @@ public partial class ArtworkHTML
       "Artworks with Errors",
       erroredArtworks,
       includeTypeFilter: true,
-      trackErrors: false);
+      trackErrors: false,
+      noindex: true);
     Console.WriteLine("  ✓ errors.html");
 
     var html = new StringBuilder();
@@ -502,7 +505,7 @@ public partial class ArtworkHTML
     html.Clear();
 
     // Now generate the HTML page for the polaroid list
-    html.AppendLine(GetHtmlHeader("{Polaroids - Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Polaroids - Keith Long Archive", canonicalPath: "polaroids.html", noindex: true));
 
     html.AppendLine(@"
     <div class='container'>
@@ -612,7 +615,9 @@ public partial class ArtworkHTML
         html.Clear();
 
         // Now generate the HTML page for the sketchbook list
-        html.AppendLine(GetHtmlHeader($"Sketchbook {bookNumber} - Keith Long Archive", "../"));
+        html.AppendLine(GetHtmlHeader($"Sketchbook {bookNumber} - Keith Long Archive", "../",
+          canonicalPath: $"sketchbooks/sketchbook{bookNumber}.html",
+          description: $"Sketchbook {bookNumber} by artist Keith Long."));
 
         html.AppendLine(@"
         <div class='container'>
@@ -709,7 +714,8 @@ public partial class ArtworkHTML
 
     // Generate sketchbooks.html index at root
     html.Clear();
-    html.AppendLine(GetHtmlHeader("Sketchbooks - Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Sketchbooks - Keith Long Archive", canonicalPath: "sketchbooks.html",
+      description: "The sketchbooks of artist Keith Long."));
     html.AppendLine(@"
     <div class='container landing-page'>
       <div class='landing-header'>
@@ -765,7 +771,8 @@ public partial class ArtworkHTML
           lastHideSketchbookNumber = bookNumber;
           html.Clear();
 
-          html.AppendLine(GetHtmlHeader($"Sketchbook {bookNumber} (Hidden) - Keith Long Archive", "../"));
+          html.AppendLine(GetHtmlHeader($"Sketchbook {bookNumber} (Hidden) - Keith Long Archive", "../",
+            canonicalPath: $"hide/sketchbook{bookNumber}.html", noindex: true));
 
           html.AppendLine(@"
           <div class='container'>
@@ -848,7 +855,7 @@ public partial class ArtworkHTML
 
       // Generate hide.html index at root
       html.Clear();
-      html.AppendLine(GetHtmlHeader("Hidden Sketchbook Pages - Keith Long Archive"));
+      html.AppendLine(GetHtmlHeader("Hidden Sketchbook Pages - Keith Long Archive", canonicalPath: "hide.html", noindex: true));
       html.AppendLine(@"
       <div class='container landing-page'>
         <div class='landing-header'>
@@ -883,10 +890,13 @@ public partial class ArtworkHTML
     string headingText,
     IEnumerable<Artwork> artworks,
     bool includeTypeFilter,
-    bool trackErrors)
+    bool trackErrors,
+    string? metaDescription = null,
+    bool noindex = false)
   {
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader($"{headingText} - Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader($"{headingText} - Keith Long Archive",
+      canonicalPath: outputFileName, description: metaDescription, noindex: noindex));
 
     html.AppendLine($@"
     <div class='container'>

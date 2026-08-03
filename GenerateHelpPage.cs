@@ -7,7 +7,8 @@ public partial class ArtworkHTML
   private async Task GenerateHelpPage(List<int>? years = null, Dictionary<int, List<int>>? sketchPages = null)
   {
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader("Help — Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Help — Keith Long Archive", canonicalPath: "help.html",
+      description: "Help for browsing and searching the Keith Long Archive."));
     html.AppendLine(@"
     <div class='landing-header'>
       <h1>Keith Long Archive</h1>

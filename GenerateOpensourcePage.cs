@@ -7,7 +7,8 @@ public partial class ArtworkHTML
   private async Task GenerateOpensourcePage()
   {
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader("Open Source — Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Open Source — Keith Long Archive", canonicalPath: "opensource.html",
+      description: "Open-source software and licenses used to build the Keith Long Archive."));
     html.AppendLine(@"
     <div class='landing-header'>
       <h1>Keith Long Archive</h1>

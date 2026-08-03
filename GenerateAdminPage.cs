@@ -20,7 +20,7 @@ public partial class ArtworkHTML
   private async Task GenerateAdminPage(IReadOnlyList<string>? errorSummary = null)
   {
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader("Admin - Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Admin - Keith Long Archive", canonicalPath: "admin.html", noindex: true));
 
     // Gate + (hidden) admin content. Same landing-page visual as index.html;
     // buttons here are placeholders to be filled in later.

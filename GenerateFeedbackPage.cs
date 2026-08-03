@@ -7,7 +7,8 @@ public partial class ArtworkHTML
   private async Task GenerateFeedbackPage()
   {
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader("Feedback — Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Feedback — Keith Long Archive", canonicalPath: "feedback.html",
+      description: "Send feedback, corrections, or bug reports for the Keith Long Archive."));
     html.AppendLine(@"
     <div class='landing-header'>
       <h1>Keith Long Archive</h1>

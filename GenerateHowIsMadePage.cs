@@ -7,7 +7,8 @@ public partial class ArtworkHTML
   private async Task GenerateHowIsMadePage()
   {
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader("How It Is Made — Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("How It Is Made — Keith Long Archive", canonicalPath: "howisitmade.html",
+      description: "How the Keith Long Archive website is built and kept up to date."));
     html.AppendLine(@"
     <div class='landing-header'>
       <h1>Keith Long Archive</h1>

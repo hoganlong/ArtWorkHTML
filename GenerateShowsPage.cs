@@ -156,7 +156,8 @@ public partial class ArtworkHTML
   private async Task WriteShowsIndex(List<ShowRow> shows, Dictionary<int, int> imageCounts)
   {
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader("Shows - Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Shows - Keith Long Archive", canonicalPath: "shows.html",
+      description: "Exhibitions and shows featuring the work of artist Keith Long."));
     html.AppendLine(@"
     <div class='container'>
         <h1>Shows</h1>
@@ -241,9 +242,12 @@ public partial class ArtworkHTML
 
     const string pathPrefix = "../";
     var title = BuildShowTitle(show);
+    var showDesc = title + (string.IsNullOrWhiteSpace(show.Gallery) ? "" : $" at {show.Gallery}")
+                   + " — an exhibition featuring the work of Keith Long.";
 
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader($"{title} - Keith Long Archive", pathPrefix));
+    html.AppendLine(GetHtmlHeader($"{title} - Keith Long Archive", pathPrefix,
+      canonicalPath: $"shows/show-{show.Id}.html", description: showDesc, ogType: "article"));
     html.AppendLine($@"
     <div class='container'>
         <h1>{EscapeHtml(title)}</h1>

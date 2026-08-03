@@ -7,7 +7,8 @@ public partial class ArtworkHTML
   private async Task GenerateCreditsPage()
   {
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader("Credits & Thanks — Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Credits & Thanks — Keith Long Archive", canonicalPath: "credits.html",
+      description: "Credits and thanks for the Keith Long Archive."));
     html.AppendLine(@"
     <div class='landing-header'>
       <h1>Keith Long Archive</h1>

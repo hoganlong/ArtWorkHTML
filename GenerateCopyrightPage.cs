@@ -7,7 +7,8 @@ public partial class ArtworkHTML
   private async Task GenerateCopyrightPage()
   {
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader("Copyright — Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Copyright — Keith Long Archive", canonicalPath: "copyright.html",
+      description: "Copyright and image-use information for the Keith Long Archive. All works © Estate of Keith Long."));
     html.AppendLine(@"
     <div class='landing-header'>
       <h1>Keith Long Archive</h1>

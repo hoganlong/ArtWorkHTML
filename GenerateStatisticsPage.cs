@@ -445,7 +445,8 @@ public partial class ArtworkHTML
     }
 
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader("Archive Statistics - Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Archive Statistics - Keith Long Archive", canonicalPath: "statistics.html",
+      description: "Statistics for the Keith Long art archive — counts by type, year, and medium."));
     html.AppendLine(@"
     <script>
     function showStatsView(btn, viewId) {

@@ -7,7 +7,7 @@ public partial class ArtworkHTML
   private async Task GenerateScansPage(ArtList scansList)
   {
     var html = new StringBuilder();
-    html.AppendLine(GetHtmlHeader("Scans - Keith Long Archive"));
+    html.AppendLine(GetHtmlHeader("Scans - Keith Long Archive", canonicalPath: "scans.html", noindex: true));
 
     html.AppendLine(@"
     <div class='container'>
