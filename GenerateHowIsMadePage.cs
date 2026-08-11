@@ -19,6 +19,7 @@ public partial class ArtworkHTML
       <div class='landing-content'>
 
       <h2>Technical Details</h2>
+      <br/>
       <h3>Artwork Catalogue Creation</h3>
        <p>To enable the creation of the catalogue (a database of all artwork details), we used a web service/website called <i>Airtable</i>.  This allowed us to have multiple people on the team add to the database at the same time (mostly just myself and the archivist).  It also featured easy to use UI for creating and modifying tables allowing for an incremental DB design enabling a more agile approach as we discovered needs or problems. Airtable also had a nice feature which allowed us to upload images and have them be visible as thumbnails as we were working on the catalogue.  This feature made the project much easier as we had pictures of the artwork we could reference when needed.</p>
 
@@ -59,7 +60,7 @@ public partial class ArtworkHTML
         <tr><td>Code generation ""AI""...</td><td>Claude Code (~v4.6)</td></tr>
         <tr><td>Languages used...</td><td>C#, HTML, JavaScript, <small>(unknown AirTable script)</small></td></tr>
       </table>
-
+      <p/>
       <h3>Take a look at the code</h3>
       <p>All the code for the database migration and HTML generation is available on GitHub: <a href='https://github.com/hoganlong/ArchiveSystem'>Hogan's Archive System</a> This project includes all the technical documentation and source code for the project.  Nothing is hidden or proprietary.</p>
 
