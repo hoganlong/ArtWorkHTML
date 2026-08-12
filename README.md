@@ -114,11 +114,11 @@ Open `artwork_html/index.html` in a web browser to view the generated website.
 
 ## Full Pipeline / Deployment
 
-The full build-and-deploy pipeline is automated by `build-and-deploy.ps1` in the parent directory (`D:\Projects\claudetest\`).
+The full build-and-deploy pipeline is automated by `build-and-deploy.ps1` in the parent directory (`D:\Projects\KLA\`).
 
 ### Run the full pipeline
 ```powershell
-cd D:\Projects\claudetest
+cd D:\Projects\KLA
 .\build-and-deploy.ps1
 ```
 
