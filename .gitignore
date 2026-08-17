@@ -58,3 +58,10 @@ nunit-*.xml
 
 # Local secrets - do not commit
 appsettings.json
+
+# Generated site output (*.html/*.css/*.js are already ignored above)
+artwork_html/robots.txt
+artwork_html/sitemap.xml
+
+# Per-page <lastmod> tracking for sitemap.xml - local build state, not source
+sitemap-state.json

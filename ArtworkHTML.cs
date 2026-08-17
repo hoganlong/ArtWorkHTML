@@ -3,7 +3,10 @@
 using Microsoft.Extensions.Configuration;
 using Npgsql;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -518,12 +521,38 @@ public partial class ArtworkHTML
     var robots = "User-agent: *\nAllow: /\n\nSitemap: " + SiteBaseUrl + "sitemap.xml\n";
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "robots.txt"), robots);
 
-    var lastmod = DateTime.UtcNow.ToString("yyyy-MM-dd");
+    // <lastmod> is per-page and only moves when that page's content actually changed.
+    // Stamping every URL with today's date on every generate tells search engines all
+    // 243 pages changed at once, which is false — and Google responds by ignoring the
+    // field entirely. So we hash each generated page and reuse the previously recorded
+    // date whenever the hash is unchanged (see PageContentHash / sitemap-state.json).
+    var previous = LoadSitemapState();
+    var current = new Dictionary<string, SitemapEntryState>(StringComparer.Ordinal);
+    var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+    int changed = 0, carried = 0;
+
     var sb = new StringBuilder();
     sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
     sb.AppendLine("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">");
     foreach (var path in _sitemapPaths.Distinct().OrderBy(p => p, StringComparer.Ordinal))
     {
+      var hash = PageContentHash(path);
+      var lastmod = today;
+      if (hash != null
+          && previous.TryGetValue(path, out var prev)
+          && prev.Hash == hash
+          && !string.IsNullOrEmpty(prev.LastMod))
+      {
+        lastmod = prev.LastMod;   // unchanged since that date — keep it
+        carried++;
+      }
+      else
+      {
+        changed++;
+      }
+      if (hash != null)
+        current[path] = new SitemapEntryState { Hash = hash, LastMod = lastmod };
+
       var loc = (SiteBaseUrl + path).Replace("&", "&amp;");
       sb.AppendLine("  <url>");
       sb.AppendLine($"    <loc>{loc}</loc>");
@@ -532,7 +561,82 @@ public partial class ArtworkHTML
     }
     sb.AppendLine("</urlset>");
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "sitemap.xml"), sb.ToString());
-    Console.WriteLine($"  ✓ robots.txt + sitemap.xml ({_sitemapPaths.Distinct().Count()} URLs)");
+    await SaveSitemapState(current);
+    Console.WriteLine($"  ✓ robots.txt + sitemap.xml ({_sitemapPaths.Distinct().Count()} URLs; "
+                      + $"{changed} dated today, {carried} unchanged)");
+  }
+
+  // Recorded state for one sitemap URL: the hash of the page as last generated, and the
+  // date that version first appeared (its <lastmod>).
+  private sealed class SitemapEntryState
+  {
+    public string Hash { get; set; } = "";
+    public string LastMod { get; set; } = "";
+  }
+
+  // Where the per-page lastmod state is kept. Deliberately OUTSIDE the output directory:
+  // the deploy step runs `aws s3 sync artwork_html/`, which would otherwise publish it.
+  private string SitemapStatePath =>
+    Path.Combine(Directory.GetParent(_outputDirectory)?.FullName ?? _outputDirectory,
+                 "sitemap-state.json");
+
+  // Every footer carries "Generated <date> at <time> | v<version>", so a page's bytes
+  // differ on every run even when nothing about its content changed. Strip that line
+  // before hashing, or nothing would ever compare equal.
+  private static readonly Regex FooterStampRegex =
+    new(@"<p>Keith Long Archive \| Generated .*?</p>", RegexOptions.Compiled);
+
+  // SHA-256 of a generated page, ignoring the footer's generation stamp.
+  // Returns null if the file isn't there (then the URL just gets today's date).
+  private string? PageContentHash(string sitemapPath)
+  {
+    var relative = sitemapPath.Length == 0 ? "index.html" : sitemapPath;
+    var file = Path.Combine(_outputDirectory, relative.Replace('/', Path.DirectorySeparatorChar));
+    if (!File.Exists(file)) return null;
+    try
+    {
+      var text = FooterStampRegex.Replace(File.ReadAllText(file), "");
+      return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
+    }
+    catch (IOException)
+    {
+      return null;
+    }
+  }
+
+  private Dictionary<string, SitemapEntryState> LoadSitemapState()
+  {
+    try
+    {
+      if (!File.Exists(SitemapStatePath))
+        return new Dictionary<string, SitemapEntryState>(StringComparer.Ordinal);
+      var parsed = JsonSerializer.Deserialize<Dictionary<string, SitemapEntryState>>(
+        File.ReadAllText(SitemapStatePath));
+      return parsed == null
+        ? new Dictionary<string, SitemapEntryState>(StringComparer.Ordinal)
+        : new Dictionary<string, SitemapEntryState>(parsed, StringComparer.Ordinal);
+    }
+    catch (Exception ex)
+    {
+      // Losing the state file is harmless: every URL just gets today's date again.
+      Console.WriteLine($"  ! Couldn't read sitemap-state.json ({ex.Message}); "
+                        + "all lastmod dates set to today.");
+      return new Dictionary<string, SitemapEntryState>(StringComparer.Ordinal);
+    }
+  }
+
+  private async Task SaveSitemapState(Dictionary<string, SitemapEntryState> state)
+  {
+    try
+    {
+      var json = JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true });
+      await File.WriteAllTextAsync(SitemapStatePath, json);
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine($"  ! Couldn't write sitemap-state.json ({ex.Message}); "
+                        + "next run will re-date every URL.");
+    }
   }
 
   private string GetHtmlFooter(string pathPrefix = "")
