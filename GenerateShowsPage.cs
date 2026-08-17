@@ -161,7 +161,7 @@ public partial class ArtworkHTML
     html.AppendLine(@"
     <div class='container'>
         <h1>Shows</h1>
-        <p class='subtitle'><a href='index.html'>← Back to Home</a></p>");
+        <p class='subtitle'><a href='index.html'>← Back to Archive</a></p>");
 
     if (shows.Count == 0)
     {

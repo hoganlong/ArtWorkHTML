@@ -622,7 +622,7 @@ public partial class ArtworkHTML
         html.AppendLine(@"
         <div class='container'>
           <h1>Sketchbooks</h1>
-          <p class='subtitle'><a id='back-link' href='../index.html'>← Back to Home</a></p>");
+          <p class='subtitle'><a id='back-link' href='../index.html'>← Back to Archive</a></p>");
 
         // Add navigation for other sketchbooks if there are multiple
         if (sketchbookNumbers.Count > 1)
@@ -720,7 +720,7 @@ public partial class ArtworkHTML
     <div class='container landing-page'>
       <div class='landing-header'>
         <h1>Sketchbooks</h1>
-        <p class='subtitle'><a id='back-link' href='index.html'>← Back to Home</a></p>
+        <p class='subtitle'><a id='back-link' href='index.html'>← Back to Archive</a></p>
       </div>
       <div class='landing-content'>");
     if (!string.IsNullOrEmpty(sbMeta.IntroHtml))
@@ -777,7 +777,7 @@ public partial class ArtworkHTML
           html.AppendLine(@"
           <div class='container'>
             <h1>Sketchbooks (Hidden)</h1>
-            <p class='subtitle'><a id='back-link' href='../index.html'>← Back to Home</a></p>");
+            <p class='subtitle'><a id='back-link' href='../index.html'>← Back to Archive</a></p>");
 
           if (hideSketchbookNumbers.Count > 1)
           {
@@ -860,7 +860,7 @@ public partial class ArtworkHTML
       <div class='container landing-page'>
         <div class='landing-header'>
           <h1>Hidden Sketchbook Pages</h1>
-          <p class='subtitle'><a id='back-link' href='index.html'>← Back to Home</a></p>
+          <p class='subtitle'><a id='back-link' href='index.html'>← Back to Archive</a></p>
         </div>
         <div class='landing-content'>
           <p>These sketchbook pages are marked as hidden and are not shown in the main sketchbook view.</p>
@@ -901,7 +901,7 @@ public partial class ArtworkHTML
     html.AppendLine($@"
     <div class='container'>
         <h1 id='page-title'>{EscapeHtml(headingText)}</h1>
-        <p class='subtitle'><a id='back-link' href='index.html'>← Back to Home</a></p>
+        <p class='subtitle'><a id='back-link' href='index.html'>← Back to Archive</a></p>
     </div>
     <div class='page-controls'>
         <div class='page-controls-row'>

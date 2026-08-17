@@ -460,7 +460,7 @@ public partial class ArtworkHTML
 
     <div class='container'>
         <h1>Archive Statistics</h1>
-        <p class='subtitle'><a href='index.html'>← Back to Home</a></p>
+        <p class='subtitle'><a href='index.html'>← Back to Archive</a></p>
 
         <h2>Artworks</h2>
         <a href='artwork.html?show=all&amp;back=statistics.html&amp;backlabel=Return+to+Statistics' class='nav-button nav-button-sm'>Browse All Artworks</a>

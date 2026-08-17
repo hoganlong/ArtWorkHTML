@@ -45,11 +45,13 @@ h1 {
 }
 
 .subtitle {
+    font-size : 1.2em;
     color: #7f8c8d;
-    margin-bottom: 30px;
+    margin-bottom: 10px;
 }
 
 .subtitle a {
+    font-size: .7em;
     color: #3498db;
     text-decoration: none;
 }
@@ -61,6 +63,17 @@ h1 {
 .landing-header {
     max-width: 1000px;
     margin: 0 auto;
+}
+
+/* The info pages (copyright, credits, help, feedback, opensource, howisitmade) put
+   .landing-header directly in the body instead of inside a .container, so they never
+   got the container's 20px top padding — their <h1> sat 20px higher than on every
+   other page, which made the heading jump when navigating between them. Match the
+   rest of the site by restoring that offset on the body-level heading block only
+   (:has(h1) picks the heading block, not the content block below it; a .landing-header
+   nested inside a .container is unaffected). */
+body > .landing-header:has(h1) {
+    padding-top: 20px;
 }
 
 .landing-content {

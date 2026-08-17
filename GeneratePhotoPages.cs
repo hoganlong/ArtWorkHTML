@@ -161,7 +161,7 @@ public partial class ArtworkHTML
     <div class='container landing-page'>
       <div class='landing-header'>
         <h1>Photos</h1>
-        <p class='subtitle'><a id='back-link' href='index.html'>← Back to Home</a></p>
+        <p class='subtitle'><a id='back-link' href='index.html'>← Back to Archive</a></p>
       </div>
       <div class='landing-content'>
         <p>Photographs from the Keith Long archive, organized by category.</p>
