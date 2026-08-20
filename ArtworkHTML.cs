@@ -157,20 +157,25 @@ public partial class ArtworkHTML
 
   // ---------------------------------------------------------------------------
   // Email obfuscation. Cloudflare-style XOR, but with a twist: the XOR key is
-  // (first blob byte) XOR (last blob byte) — both random salts — instead of the
-  // standard cf-email scheme where the key IS the first byte. That breaks the
-  // off-the-shelf de-obfuscators/scrapers that hard-code key = byte[0], while a
-  // real JS-running browser decodes it fine. Blob layout (hex): [A][cipher...][B]
-  // where A,B are random, key = A^B (forced non-zero), cipher[i] = email[i]^key.
+  // (first blob byte) XOR (last blob byte) — two salts — instead of the standard
+  // cf-email scheme where the key IS the first byte. That breaks the off-the-shelf
+  // de-obfuscators/scrapers that hard-code key = byte[0], while a real JS-running
+  // browser decodes it fine. Blob layout (hex): [A][cipher...][B] where A and B are
+  // derived from the address, key = A^B (forced non-zero), cipher[i] = email[i]^key.
   // NOTE: only defeats non-JS scrapers; a JS-executing scraper still resolves it.
   // ---------------------------------------------------------------------------
-  private static readonly Random _emailRng = new Random();
-
+  // The salts are derived from the address rather than drawn at random, so the same
+  // address always produces the same blob. Randomising them bought no protection —
+  // the decoder recovers the key from the blob itself (key = A^B), so a JS-running
+  // scraper is unaffected either way — but it made every page's bytes differ on every
+  // generate (the alpha banner puts an email link on every page), which defeated the
+  // sitemap's content-change detection and re-dated all 243 URLs each run.
   private static string ObfuscateEmail(string email)
   {
     var data = System.Text.Encoding.UTF8.GetBytes(email);
-    int key = _emailRng.Next(1, 256);   // 1..255, never 0 -> always obfuscated
-    int a = _emailRng.Next(0, 256);     // random leading salt
+    var digest = SHA256.HashData(data);
+    int key = (digest[0] % 255) + 1;    // 1..255, never 0 -> always obfuscated
+    int a = digest[1];                  // leading salt
     int b = a ^ key;                    // trailing salt; a ^ b == key
     var sb = new System.Text.StringBuilder((data.Length + 2) * 2);
     sb.Append(a.ToString("x2"));
