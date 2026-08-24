@@ -292,6 +292,168 @@ public partial class ArtworkHTML
   };
 })();";
   }
+
+  // -----------------------------------------------------------------------
+  // Shared client-side scripts
+  //
+  // Anything used by more than one page is written to its own .js file and pulled
+  // in with <script src>, the way lightbox.js already was. Inlining meant a
+  // one-line edit to a shared script changed the bytes of every page carrying it
+  // (91 pages for the tag filter, all of them for the email decoder), which
+  // re-dated every one of those URLs in sitemap.xml and made browsers re-download
+  // the same code once per page instead of caching it once for the whole site.
+  //
+  // Page-specific scripts (admin gate, help finder, statistics tabs, the home
+  // page's split button) stay inline — they have no other page to share with.
+  // -----------------------------------------------------------------------
+  private const string TagsScriptFile = "tags.js";
+  private const string EmailScriptFile = "email.js";
+  private const string KeysScriptFile = "keys.js";
+  private const string TypeFilterScriptFile = "typefilter.js";
+  private const string ThumbsScriptFile = "thumbs.js";
+
+  // pathPrefix is "../" for pages written into a sub-folder (sketchbooks/, hide/, photo/).
+  private static string SharedScriptTag(string file, string pathPrefix = "") =>
+    $"<script src='{pathPrefix}{file}'></script>";
+
+  // Keyboard shortcuts for the gallery pages. Was duplicated inline in five places
+  // with drifting indentation, and the scans copy had lost the 'p' binding. The
+  // optional-chaining calls simply no-op on a page that lacks a given checkbox.
+  private static string GetKeyboardShortcutsScript()
+  {
+    return @"document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
+    if (e.key === 'p' || e.key === 'P') document.getElementById('chk-thumb-hover')?.click();
+    if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
+});";
+  }
+
+  // Thumbnail sizing + hover preview. applyThumbSize is called from inline onload=
+  // attributes on the thumbnails, so this must still be emitted ahead of the gallery
+  // markup (it is — the same position the inline block occupied).
+  private static string GetThumbsScript()
+  {
+    return @"function applyThumbSize(img) {
+    if (img.naturalWidth > img.naturalHeight * 1.4) {
+        img.style.width = Math.min(Math.round(40 * img.naturalWidth / img.naturalHeight), 220) + 'px';
+    }
+    if (img.naturalHeight > img.naturalWidth * 1.4) {
+        var largeSrc = img.dataset.largeSrc;
+        if (largeSrc && img.src !== largeSrc) {
+            img.src = largeSrc;
+            return;
+        }
+        img.style.height = Math.min(Math.round(40 * img.naturalHeight / img.naturalWidth), 120) + 'px';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.thumb-button').forEach(function(btn) {
+        btn.addEventListener('mouseenter', function() {
+            if (this.querySelector('.thumb-preview')) return;
+            var thumbImg = this.querySelector('img[data-large-src]');
+            if (!thumbImg) return;
+            var src = thumbImg.dataset.largeSrc || thumbImg.src;
+            if (!src) return;
+            var preview = document.createElement('img');
+            preview.className = 'thumb-preview';
+            preview.src = src;
+            this.appendChild(preview);
+        });
+    });
+});";
+  }
+
+  // Builds the per-type checkbox filter above a gallery. Reads window._tagState, so
+  // tags.js must load before this one — the emit order preserves that.
+  private static string GetTypeFilterScript()
+  {
+    return @"document.addEventListener('DOMContentLoaded', function() {
+    var items = document.querySelectorAll('.gallery-item');
+    var typeSet = new Set();
+    items.forEach(function(el) {
+        var tagsEl = el.querySelector('my-tags');
+        if(!tagsEl) return;
+        var firstTag = tagsEl.textContent.split(',')[0].trim();
+        if(firstTag) typeSet.add(firstTag);
+    });
+    var container = document.getElementById('type-filter-checkboxes');
+    if (!container) return;
+
+    // All master checkbox — controls all type boxes but is not affected by them
+    var allLabel = document.createElement('label');
+    var allCb = document.createElement('input');
+    allCb.type = 'checkbox';
+    allCb.checked = true;
+    allCb.addEventListener('change', function() {
+        container.querySelectorAll('input[data-filter-type]').forEach(function(cb) {
+            cb.checked = allCb.checked;
+        });
+        filterGallery();
+    });
+    allLabel.appendChild(allCb);
+    allLabel.appendChild(document.createTextNode(' All'));
+    container.appendChild(allLabel);
+
+    Array.from(typeSet).sort().forEach(function(tag) {
+        var label = document.createElement('label');
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = true;
+        cb.dataset.filterType = tag;
+        cb.addEventListener('change', filterGallery);
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(' ' + tag));
+        container.appendChild(label);
+    });
+    function filterGallery() {
+        var hidden = new Set();
+        container.querySelectorAll('input[data-filter-type]').forEach(function(cb) {
+            if (!cb.checked) hidden.add(cb.dataset.filterType);
+        });
+        items.forEach(function(el) {
+            var tagsEl = el.querySelector('my-tags');
+            var firstType = tagsEl ? tagsEl.textContent.split(',')[0].trim() : '';
+            el.style.display = (firstType && hidden.has(firstType)) ? 'none' : '';
+        });
+    }
+    // Sync checkboxes with active tags from URL/anchor/cookie
+    var tagState = window._tagState;
+    if (tagState && !tagState.hasAll && tagState.activeTags.size > 0) {
+        var typeCbs = Array.from(container.querySelectorAll('input[data-filter-type]'));
+        var hasActiveTypeTag = typeCbs.some(function(cb) { return tagState.activeTags.has(cb.dataset.filterType.toLowerCase()); });
+        if (hasActiveTypeTag) {
+            allCb.checked = false;
+            typeCbs.forEach(function(cb) {
+                cb.checked = tagState.activeTags.has(cb.dataset.filterType.toLowerCase());
+            });
+            filterGallery();
+        } else {
+            // Non-type tags active (e.g. year) — uncheck All to signal filtered view, leave type boxes checked
+            allCb.checked = false;
+        }
+    }
+});";
+  }
+
+  // Writes every shared script file. Called from both GenerateAllPages and
+  // GenerateStaticPages, because the footer references email.js on every page —
+  // including the static-only ones.
+  private async Task GenerateSharedScripts()
+  {
+    var files = new (string Name, string Body)[]
+    {
+      (TagsScriptFile,       GetTagsScript()),
+      (EmailScriptFile,      GetEmailDecoderScript()),
+      (KeysScriptFile,       GetKeyboardShortcutsScript()),
+      (TypeFilterScriptFile, GetTypeFilterScript()),
+      (ThumbsScriptFile,     GetThumbsScript()),
+    };
+    foreach (var (name, body) in files)
+      await File.WriteAllTextAsync(Path.Combine(_outputDirectory, name), body);
+    Console.WriteLine($"  ✓ shared scripts ({string.Join(", ", files.Select(f => f.Name))})");
+  }
   // -----------------------------------------------------------------------
 
   public ArtworkHTML(string connectionString, string outputDirectory)
@@ -348,6 +510,7 @@ public partial class ArtworkHTML
     await GenerateOpensourcePage();
     await GenerateStylesheet();
     await GenerateLightboxScript();
+    await GenerateSharedScripts();
 
     Console.WriteLine("  ✓ index.html - Landing page");
     Console.WriteLine("  ✓ admin.html - Admin page (password-gated)");
@@ -408,6 +571,7 @@ public partial class ArtworkHTML
     await GenerateOpensourcePage();
     await GenerateStylesheet();
     await GenerateLightboxScript();
+    await GenerateSharedScripts();
     await GenerateSitemapAndRobots();
 
     Console.WriteLine("  ✓ index.html - Landing page");
@@ -662,7 +826,7 @@ public partial class ArtworkHTML
         </nav>
         <p>Keith Long Archive | Generated {DateTime.Now:MMMM d, yyyy' at 'h:mm tt} | v{_version}</p>
     </footer>
-    <script>{GetEmailDecoderScript()}</script>
+    {SharedScriptTag(EmailScriptFile, pathPrefix)}
 </body>
 </html>";
   }

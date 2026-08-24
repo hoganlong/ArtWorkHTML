@@ -516,15 +516,9 @@ public partial class ArtworkHTML
         <span class='page-controls-label'>Hover effects:</span>
         <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom (z)</label>
     </div>");
-    html.AppendLine($"<script>{GetTagsScript()}</script>");
-    html.AppendLine(@"<script>
-    document.addEventListener('keydown', function(e) {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
-        if (e.key === 'p' || e.key === 'P') document.getElementById('chk-thumb-hover')?.click();
-        if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-    </script>
+    html.AppendLine(SharedScriptTag(TagsScriptFile));
+    html.AppendLine(SharedScriptTag(KeysScriptFile));
+    html.AppendLine(@"
     <div id='tag-title' class='tag-title-banner' style='display:none'></div>
     <div class='container'>");
 
@@ -655,15 +649,9 @@ public partial class ArtworkHTML
             <span class='page-controls-label'>Hover effects:</span>
             <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom (z)</label>
         </div>");
-        html.AppendLine($"<script>{GetTagsScript()}</script>");
-        html.AppendLine(@"<script>
-          document.addEventListener('keydown', function(e) {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
-            if (e.key === 'p' || e.key === 'P') document.getElementById('chk-thumb-hover')?.click();
-            if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
-          });
-        </script>
+        html.AppendLine(SharedScriptTag(TagsScriptFile, "../"));
+        html.AppendLine(SharedScriptTag(KeysScriptFile, "../"));
+        html.AppendLine(@"
         <div id='tag-title' class='tag-title-banner' style='display:none'></div>
         <div class='container'>");
 
@@ -736,7 +724,7 @@ public partial class ArtworkHTML
     html.AppendLine(@"
       </div>
     </div>");
-    html.AppendLine($"<script>{GetTagsScript()}</script>");
+    html.AppendLine(SharedScriptTag(TagsScriptFile));
     html.AppendLine(GetHtmlFooter());
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "sketchbooks.html"), html.ToString());
     Console.WriteLine("  ✓ sketchbooks.html - Sketchbook index");
@@ -798,15 +786,9 @@ public partial class ArtworkHTML
               <span class='page-controls-label'>Hover effects:</span>
               <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom (z)</label>
           </div>");
-          html.AppendLine($"<script>{GetTagsScript()}</script>");
-          html.AppendLine(@"<script>
-            document.addEventListener('keydown', function(e) {
-              if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-              if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
-              if (e.key === 'p' || e.key === 'P') document.getElementById('chk-thumb-hover')?.click();
-              if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
-            });
-          </script>
+          html.AppendLine(SharedScriptTag(TagsScriptFile, "../"));
+          html.AppendLine(SharedScriptTag(KeysScriptFile, "../"));
+          html.AppendLine(@"
           <div id='tag-title' class='tag-title-banner' style='display:none'></div>
           <div class='container'>");
 
@@ -917,120 +899,15 @@ public partial class ArtworkHTML
         </div>");
     }
     html.AppendLine(@"    </div>");
-    html.AppendLine($"<script>{GetTagsScript()}</script>");
+    html.AppendLine(SharedScriptTag(TagsScriptFile));
 
+    // typefilter.js reads window._tagState, so it must come after tags.js
     if (includeTypeFilter)
-    {
-      html.AppendLine(@"<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var items = document.querySelectorAll('.gallery-item');
-        var typeSet = new Set();
-        items.forEach(function(el) {
-            var tagsEl = el.querySelector('my-tags');
-            if(!tagsEl) return;
-            var firstTag = tagsEl.textContent.split(',')[0].trim();
-            if(firstTag) typeSet.add(firstTag);
-        });
-        var container = document.getElementById('type-filter-checkboxes');
-        if (!container) return;
+      html.AppendLine(SharedScriptTag(TypeFilterScriptFile));
 
-        // All master checkbox — controls all type boxes but is not affected by them
-        var allLabel = document.createElement('label');
-        var allCb = document.createElement('input');
-        allCb.type = 'checkbox';
-        allCb.checked = true;
-        allCb.addEventListener('change', function() {
-            container.querySelectorAll('input[data-filter-type]').forEach(function(cb) {
-                cb.checked = allCb.checked;
-            });
-            filterGallery();
-        });
-        allLabel.appendChild(allCb);
-        allLabel.appendChild(document.createTextNode(' All'));
-        container.appendChild(allLabel);
-
-        Array.from(typeSet).sort().forEach(function(tag) {
-            var label = document.createElement('label');
-            var cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.checked = true;
-            cb.dataset.filterType = tag;
-            cb.addEventListener('change', filterGallery);
-            label.appendChild(cb);
-            label.appendChild(document.createTextNode(' ' + tag));
-            container.appendChild(label);
-        });
-        function filterGallery() {
-            var hidden = new Set();
-            container.querySelectorAll('input[data-filter-type]').forEach(function(cb) {
-                if (!cb.checked) hidden.add(cb.dataset.filterType);
-            });
-            items.forEach(function(el) {
-                var tagsEl = el.querySelector('my-tags');
-                var firstType = tagsEl ? tagsEl.textContent.split(',')[0].trim() : '';
-                el.style.display = (firstType && hidden.has(firstType)) ? 'none' : '';
-            });
-        }
-        // Sync checkboxes with active tags from URL/anchor/cookie
-        var tagState = window._tagState;
-        if (tagState && !tagState.hasAll && tagState.activeTags.size > 0) {
-            var typeCbs = Array.from(container.querySelectorAll('input[data-filter-type]'));
-            var hasActiveTypeTag = typeCbs.some(function(cb) { return tagState.activeTags.has(cb.dataset.filterType.toLowerCase()); });
-            if (hasActiveTypeTag) {
-                allCb.checked = false;
-                typeCbs.forEach(function(cb) {
-                    cb.checked = tagState.activeTags.has(cb.dataset.filterType.toLowerCase());
-                });
-                filterGallery();
-            } else {
-                // Non-type tags active (e.g. year) — uncheck All to signal filtered view, leave type boxes checked
-                allCb.checked = false;
-            }
-        }
-    });
-    </script>");
-    }
-
-    html.AppendLine(@"<script>
-    document.addEventListener('keydown', function(e) {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
-        if (e.key === 'p' || e.key === 'P') document.getElementById('chk-thumb-hover')?.click();
-        if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-    </script>
-    <script>
-    function applyThumbSize(img) {
-        if (img.naturalWidth > img.naturalHeight * 1.4) {
-            img.style.width = Math.min(Math.round(40 * img.naturalWidth / img.naturalHeight), 220) + 'px';
-        }
-        if (img.naturalHeight > img.naturalWidth * 1.4) {
-            var largeSrc = img.dataset.largeSrc;
-            if (largeSrc && img.src !== largeSrc) {
-                img.src = largeSrc;
-                return;
-            }
-            img.style.height = Math.min(Math.round(40 * img.naturalHeight / img.naturalWidth), 120) + 'px';
-        }
-    }
-    </script>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.thumb-button').forEach(function(btn) {
-            btn.addEventListener('mouseenter', function() {
-                if (this.querySelector('.thumb-preview')) return;
-                var thumbImg = this.querySelector('img[data-large-src]');
-                if (!thumbImg) return;
-                var src = thumbImg.dataset.largeSrc || thumbImg.src;
-                if (!src) return;
-                var preview = document.createElement('img');
-                preview.className = 'thumb-preview';
-                preview.src = src;
-                this.appendChild(preview);
-            });
-        });
-    });
-    </script>
+    html.AppendLine(SharedScriptTag(KeysScriptFile));
+    html.AppendLine(SharedScriptTag(ThumbsScriptFile));
+    html.AppendLine(@"
     <div id='tag-title' class='tag-title-banner' style='display:none'></div>
     <div class='container'>");
 

@@ -124,7 +124,7 @@ public partial class ArtworkHTML
       html.AppendLine(RenderPhoto(p));
     html.AppendLine("        </div>");
     html.AppendLine("    </div>");
-    html.AppendLine($"<script>{GetTagsScript()}</script>");
+    html.AppendLine(SharedScriptTag(TagsScriptFile, pathPrefix));
     html.AppendLine(GetLightboxHtml());
     html.AppendLine(GetLightboxScriptTag(pathPrefix));
     html.AppendLine(GetHtmlFooter(pathPrefix));
@@ -186,7 +186,7 @@ public partial class ArtworkHTML
     html.AppendLine(@"
       </div>
     </div>");
-    html.AppendLine($"<script>{GetTagsScript()}</script>");
+    html.AppendLine(SharedScriptTag(TagsScriptFile));
     html.AppendLine(GetHtmlFooter());
 
     await File.WriteAllTextAsync(Path.Combine(_outputDirectory, "photo.html"), html.ToString());

@@ -18,14 +18,9 @@ public partial class ArtworkHTML
         <span class='page-controls-label'>Hover effects:</span>
         <label><input type='checkbox' id='chk-image-hover' checked onchange='document.body.classList.toggle(""no-image-hover"", !this.checked)'> Image zoom (z)</label>
     </div>");
-    html.AppendLine($"<script>{GetTagsScript()}</script>");
-    html.AppendLine(@"<script>
-    document.addEventListener('keydown', function(e) {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        if (e.key === 'z' || e.key === 'Z') document.getElementById('chk-image-hover')?.click();
-        if (e.key === 't' || e.key === 'T') window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-    </script>
+    html.AppendLine(SharedScriptTag(TagsScriptFile));
+    html.AppendLine(SharedScriptTag(KeysScriptFile));
+    html.AppendLine(@"
     <div id='tag-title' class='tag-title-banner' style='display:none'></div>
     <div class='container'>");
 
