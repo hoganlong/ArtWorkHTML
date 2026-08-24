@@ -222,7 +222,11 @@ public partial class ArtworkHTML
   if(hash) activeTags.add(hash);
   var cookieMatch = document.cookie.match(/(?:^|;\s*)TAGS=([^;]*)/);
   if(cookieMatch) cookieMatch[1].split(',').forEach(function(t){ t=t.trim().toLowerCase(); if(t) activeTags.add(t); });
-  var hasAll = activeTags.has('all');
+  // No filter supplied at all (no tag/show/tagtitle, no #hash, no TAGS cookie) means
+  // show everything — i.e. the bare URL behaves like ?show=all. Every filterable page
+  // canonicalises to itself with the query string stripped, so the URL search engines
+  // actually index must not render an empty gallery. Any explicit filter still filters.
+  var hasAll = activeTags.has('all') || activeTags.size === 0;
   window._tagState = { activeTags: activeTags, hasAll: hasAll };
   var back = params.get('back');
   var backlabel = params.get('backlabel');
