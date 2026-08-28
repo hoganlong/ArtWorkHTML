@@ -527,7 +527,7 @@ public partial class ArtworkHTML
     {
       Artwork art = artItem.Value;
 
-      html.AppendLine($@"<div class='gallery-item'>");
+      html.AppendLine($@"<div class='gallery-item'{DateAttr(art.ctDate)}>");
       html.AppendLine($@"  <a href='{art.jpgFullURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
         <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
 
@@ -660,7 +660,7 @@ public partial class ArtworkHTML
 
       Artwork art = sketchBookEntry.Value;
 
-      html.AppendLine($@"<div class='gallery-item'>");
+      html.AppendLine($@"<div class='gallery-item'{DateAttr(art.ctDate)}>");
       html.AppendLine($@"  <a href='{art.jpgFullURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
         <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
 
@@ -797,7 +797,7 @@ public partial class ArtworkHTML
 
         Artwork art = sketchBookEntry.Value;
 
-        html.AppendLine($@"<div class='gallery-item'>");
+        html.AppendLine($@"<div class='gallery-item'{DateAttr(art.ctDate)}>");
         html.AppendLine($@"  <a href='{art.jpgFullURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
           <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
 
@@ -916,7 +916,7 @@ public partial class ArtworkHTML
     {
       if (art.myType == ArtType.NonArtPhoto) continue;
 
-      html.AppendLine($@"<div class='gallery-item'>");
+      html.AppendLine($@"<div class='gallery-item'{DateAttr(art.ctDate)}>");
       if ((art.states & StatesType.NoImage) == 0)
       {
         html.AppendLine($@"  <a href='{art.jpgFullURL}' rel='noopener noreferrer'>

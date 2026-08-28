@@ -222,12 +222,42 @@ public partial class ArtworkHTML
   if(hash) activeTags.add(hash);
   var cookieMatch = document.cookie.match(/(?:^|;\s*)TAGS=([^;]*)/);
   if(cookieMatch) cookieMatch[1].split(',').forEach(function(t){ t=t.trim().toLowerCase(); if(t) activeTags.add(t); });
-  // No filter supplied at all (no tag/show/tagtitle, no #hash, no TAGS cookie) means
+
+  // Date filters: d:M/D/Y, with * as a wildcard in any component. Examples:
+  //   show=d:*/*/2020   everything dated in 2020
+  //   show=d:1/*/*      every January, any day, any year
+  //   show=d:1/1/*      every January 1st
+  // Matched against each gallery item's data-date (YYYY-MM-DD), which is emitted only
+  // for items with a real date (see DateAttr). Several d: filters, or a d: filter
+  // alongside plain tags, are OR-ed together the same way plain tags already are.
+  var datePatterns = [];
+  var dateTags = [];
+  activeTags.forEach(function(t) { if (t.slice(0, 2) === 'd:') dateTags.push(t); });
+  dateTags.forEach(function(t) {
+    activeTags.delete(t);                 // it is a filter, not a literal tag to match
+    var parts = t.slice(2).split('/');
+    if (parts.length === 3) datePatterns.push(parts);
+  });
+  function datePartMatches(pat, val) {
+    return pat === '*' || Number(pat) === Number(val);   // tolerates 01 vs 1
+  }
+  function matchesDateFilter(item) {
+    if (!datePatterns.length) return false;
+    var iso = (item.getAttribute('data-date') || '').split('-');
+    if (iso.length !== 3) return false;
+    return datePatterns.some(function(q) {
+      return datePartMatches(q[0], iso[1])    // month
+          && datePartMatches(q[1], iso[2])    // day
+          && datePartMatches(q[2], iso[0]);   // year
+    });
+  }
+
+  // No filter supplied at all (no tag/show/tagtitle/d:, no #hash, no TAGS cookie) means
   // show everything — i.e. the bare URL behaves like ?show=all. Every filterable page
   // canonicalises to itself with the query string stripped, so the URL search engines
   // actually index must not render an empty gallery. Any explicit filter still filters.
-  var hasAll = activeTags.has('all') || activeTags.size === 0;
-  window._tagState = { activeTags: activeTags, hasAll: hasAll };
+  var hasAll = activeTags.has('all') || (activeTags.size === 0 && datePatterns.length === 0);
+  window._tagState = { activeTags: activeTags, hasAll: hasAll, datePatterns: datePatterns };
   var back = params.get('back');
   var backlabel = params.get('backlabel');
   if (back || backlabel) {
@@ -267,6 +297,7 @@ public partial class ArtworkHTML
   document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.gallery-item').forEach(function(item) {
       if(hasAll) { item.classList.add('tag-active'); return; }
+      if(matchesDateFilter(item)) { item.classList.add('tag-active'); return; }
       var allTagText = Array.from(item.querySelectorAll('my-tags, my-hidden-tags')).map(function(el){ return el.textContent; }).join(',');
       var itemTags = allTagText.split(',').map(function(t){ return t.trim().toLowerCase(); }).filter(function(t){ return t; });
       for(var i=0; i<itemTags.length; i++) {
@@ -280,6 +311,7 @@ public partial class ArtworkHTML
     activeTags.clear();
     activeTags.add(tag);
     hasAll = false;
+    datePatterns = [];        // clicking a tag replaces any date filter from the URL
     document.querySelectorAll('.gallery-item').forEach(function(item) {
       item.classList.remove('tag-active');
       var allTagText = Array.from(item.querySelectorAll('my-tags, my-hidden-tags')).map(function(el){ return el.textContent; }).join(',');
@@ -418,9 +450,12 @@ document.addEventListener('DOMContentLoaded', function() {
             el.style.display = (firstType && hidden.has(firstType)) ? 'none' : '';
         });
     }
-    // Sync checkboxes with active tags from URL/anchor/cookie
+    // Sync checkboxes with active tags from URL/anchor/cookie. A date filter (d:M/D/Y)
+    // counts as filtered too, even though it puts no tag in activeTags — otherwise the
+    // All box would stay checked over a filtered gallery.
     var tagState = window._tagState;
-    if (tagState && !tagState.hasAll && tagState.activeTags.size > 0) {
+    var dateFiltered = !!(tagState && (tagState.datePatterns || []).length);
+    if (tagState && !tagState.hasAll && (tagState.activeTags.size > 0 || dateFiltered)) {
         var typeCbs = Array.from(container.querySelectorAll('input[data-filter-type]'));
         var hasActiveTypeTag = typeCbs.some(function(cb) { return tagState.activeTags.has(cb.dataset.filterType.toLowerCase()); });
         if (hasActiveTypeTag) {
@@ -606,6 +641,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
   private static string DateOrEmpty(DateTime dt) =>
     (dt == DateTime.MinValue || dt.Year == 1900) ? "" : dt.ToShortDateString();
+
+  // Machine-readable date for a gallery item, so tags.js can match the d:M/D/Y filter
+  // (see GetTagsScript). ISO order keeps it unambiguous and locale-independent — the
+  // displayed date uses ToShortDateString, which is not safe to parse. Omitted for the
+  // placeholder years, since 1899 = "not yet entered" and 1900 = "unknown" are not
+  // real dates and must not match a date filter.
+  private static string DateAttr(DateTime dt) =>
+    (dt == DateTime.MinValue || dt.Year == 1899 || dt.Year == 1900)
+      ? "" : $" data-date='{dt:yyyy-MM-dd}'";
 
   private static string BlankOrWithBR(string inS, string prepend = "")
   {
