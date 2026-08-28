@@ -285,6 +285,10 @@ public partial class ArtworkHTML
     }
 
     html.AppendLine("    </div>");
+    // These pages previously relied on a baked-in tag-active class and never loaded
+    // tags.js. Now that visibility is script-driven (so d:M/D/Y works here), the script
+    // has to be present — without it every item stays hidden.
+    html.AppendLine(SharedScriptTag(TagsScriptFile, pathPrefix));
     html.AppendLine(GetLightboxHtml());
     html.AppendLine(GetLightboxScriptTag(pathPrefix));
     html.AppendLine(GetHtmlFooter(pathPrefix));
@@ -326,8 +330,16 @@ public partial class ArtworkHTML
     if (!TryResolveItemImage(item, showId, artworkLookups, aiLookups, photoLookups, out var previewUrl, out var fullUrl, out var _))
       return "";
 
+    // Visibility is left to tags.js (no baked-in tag-active) so the d:M/D/Y filter works
+    // here too; a bare URL still shows every item. Only items resolved to an artwork can
+    // be dated — a show's photo items come from PhotoLookup, which carries no date.
+    var dateAttr = item.ArtworkId.HasValue
+                   && artworkLookups.TryGetValue(item.ArtworkId.Value, out var awForDate)
+      ? DateAttr(awForDate.CreateDt)
+      : "";
+
     var sb = new StringBuilder();
-    sb.AppendLine("<div class='gallery-item tag-active'>");
+    sb.AppendLine($"<div class='gallery-item'{dateAttr}>");
     sb.AppendLine($"  <a href='{fullUrl}' rel='noopener noreferrer'><img src='{previewUrl}' loading='lazy' title='(click for full size)'/></a>");
     sb.AppendLine("  <div class='desc item-description'>");
 
