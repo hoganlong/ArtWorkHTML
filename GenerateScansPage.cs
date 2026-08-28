@@ -30,7 +30,12 @@ public partial class ArtworkHTML
     {
       Artwork art = artItem.Value;
 
-      html.AppendLine($@"<div class='gallery-item tag-active'>");
+      // No baked-in tag-active here: visibility is left to tags.js so the date filter
+      // works, e.g. scans.html?show=d:8/27/2026 for everything uploaded that day. A bare
+      // URL still shows every item, since no filter at all means show all. The date is
+      // the S3 object's LastModified (the same one displayed below), so on this page the
+      // filter reads as "when was this file uploaded".
+      html.AppendLine($@"<div class='gallery-item'{DateAttr(art.ctDate)}>");
 
       if (art.states.HasFlag(StatesType.jpgFound))
       {
