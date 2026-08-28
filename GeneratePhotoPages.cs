@@ -132,13 +132,28 @@ public partial class ArtworkHTML
     await File.WriteAllTextAsync(Path.Combine(photoDir, $"{slug}.html"), html.ToString());
   }
 
+  // A photo may have a full date or only a year. A year-only photo gets 00 for month and
+  // day, so it still matches a year query (d:*/*/1975) but never a month- or day-specific
+  // one — 00 can't equal any real month or day, while * matches anything.
+  private static string PhotoDateAttr(PhotoRow p)
+  {
+    if (p.Date.HasValue && p.Date.Value != DateTime.MinValue && p.Date.Value.Year > 1900)
+      return DateAttr(p.Date.Value);
+    if (p.Year.HasValue && p.Year.Value > 1900)
+      return $" data-date='{p.Year.Value:0000}-00-00'";
+    return "";
+  }
+
   private string RenderPhoto(PhotoRow p)
   {
     if (string.IsNullOrWhiteSpace(p.Url)) return "";
     var (preview, full) = BuildJpgUrls(p.Url);
 
     var sb = new StringBuilder();
-    sb.AppendLine("<div class='gallery-item tag-active'>");
+    // Visibility is left to tags.js (no baked-in tag-active) so the d:M/D/Y filter works
+    // here — on this page it means when the photograph was taken, not when a file was
+    // uploaded. A bare URL still shows every photo, since no filter means show all.
+    sb.AppendLine($"<div class='gallery-item'{PhotoDateAttr(p)}>");
     sb.AppendLine($"  <a href='{full}' rel='noopener noreferrer'><img src='{preview}' loading='lazy' title='(click for full size)'/></a>");
     sb.AppendLine("  <div class='desc item-description'>");
     sb.AppendLine($"    {BlankOrWithBR(DateOrEmpty(p.Date ?? DateTime.MinValue), "  ")}");
