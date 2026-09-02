@@ -72,6 +72,7 @@ public partial class ArtworkHTML
     ("SHOW_OPENING",      "Opening"),
     ("SHOW_RECEPTION",    "Reception"),
     ("SHOW_LAYOUT",       "Layout"),
+    ("SHOW_OTHER",        "Other"),
   };
 
   private async Task GenerateShowsPage()
