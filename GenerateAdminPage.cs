@@ -68,7 +68,7 @@ public partial class ArtworkHTML
         </div>
         <div class='navigation'>
             <div class='nav-button-wrap'><a href='index.html' class='nav-button'>Back to Site</a><div class='coming-soon'>&nbsp;</div></div>
-            <div class='nav-button-wrap'><a href='errors.html?show=all&amp;back=admin.html&amp;backlabel=Admin' class='nav-button'>Errors</a><div class='coming-soon'>&nbsp;</div></div>
+            <div class='nav-button-wrap'><a href='errors.html' class='nav-button'>Errors</a><div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><a href='polaroids.html?show=all' class='nav-button'>Polaroids</a><div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><a href='scans.html' class='nav-button'>Scans</a><div class='coming-soon'>&nbsp;</div></div>
             <div class='nav-button-wrap'><a href='hide.html' class='nav-button'>Hidden Sketchbooks</a><div class='coming-soon'>&nbsp;</div></div>

@@ -489,15 +489,9 @@ public partial class ArtworkHTML
     // error (errors render in red). art.errors is already populated by the pre-pass
     // and the earlier image-resolution passes. trackErrors:false so we don't
     // re-count or re-emit the summary comment.
-    var erroredArtworks = artList.artworks.Values.Where(a => a.errors.Count > 0);
-    await WriteArtworkGalleryPage(
-      "errors.html",
-      "Artworks with Errors",
-      erroredArtworks,
-      includeTypeFilter: true,
-      trackErrors: false,
-      noindex: true);
-    Console.WriteLine("  ✓ errors.html");
+    var erroredArtworks = artList.artworks.Values.Where(a => a.errors.Count > 0).ToList();
+    await WriteErrorPages(erroredArtworks);
+    Console.WriteLine("  ✓ errors.html + per-error-type pages");
 
     var html = new StringBuilder();
 
@@ -1058,7 +1052,7 @@ public partial class ArtworkHTML
       {
         foreach (var err in art.errors)
         {
-          var key = err.StartsWith("Duplicate humanId") ? "Duplicate humanId" : err;
+          var key = ErrorBucketKey(err);
           _errorCounts[key] = _errorCounts.TryGetValue(key, out int c) ? c + 1 : 1;
         }
       }
