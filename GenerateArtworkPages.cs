@@ -319,7 +319,18 @@ public partial class ArtworkHTML
               // (FileName = "scans/<name>"), treat it as a regular artwork
               // hit and skip sketchbook/polaroid/scans-page categorisation.
               if (artList.TryAttachBucketFile(name, ext, "scans/") != null) break;
-              if (ext == "tif" && filename.StartsWith("KLA"))
+              // "KLA_<book>_<page>_C.tif" is a cropped variant of an existing
+              // sketchbook page's scan, not a page of its own — attach it to
+              // that page instead of running it through the sketch-page parser
+              // (which would otherwise either misparse it or, worse, parse it
+              // as a second, duplicate copy of the same page).
+              if (ext == "tif" && name.StartsWith("KLA") && name.EndsWith("_C"))
+              {
+                if (!DbSketchOnly &&
+                    !sketchBookList.TryAttachCroppedSketchFile(name[..^2], $"{ImageBaseUrl}scans/{name}.tif"))
+                  scansList.AddBucketFile("scans/", name, ext, lastModified, true);
+              }
+              else if (ext == "tif" && filename.StartsWith("KLA"))
               {
                 if (!DbSketchOnly)
                   sketchBookList.AddSketchBucketFile("scans/", name, ext, lastModified, true);
@@ -523,7 +534,7 @@ public partial class ArtworkHTML
 
       html.AppendLine($@"<div class='gallery-item'{DateAttr(art.ctDate)}>");
       html.AppendLine($@"  <a href='{art.jpgFullURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
-        <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
+        <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a>{(string.IsNullOrEmpty(art.croppedTifURL) ? "" : $" <a class='desc' href='{art.croppedTifURL}'>[Cropped]</a>")}</div>");
 
       html.AppendLine($"<div>");
       html.AppendLine($"  <div class='desc item-description'>");
@@ -656,7 +667,7 @@ public partial class ArtworkHTML
 
       html.AppendLine($@"<div class='gallery-item'{DateAttr(art.ctDate)}>");
       html.AppendLine($@"  <a href='{art.jpgFullURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
-        <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
+        <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a>{(string.IsNullOrEmpty(art.croppedTifURL) ? "" : $" <a class='desc' href='{art.croppedTifURL}'>[Cropped]</a>")}</div>");
 
       html.AppendLine($"  <div class='desc item-description'>");
       html.AppendLine($"    {BlankOrWithBR(art.pageNumber.ToString(), " ")}");
@@ -793,7 +804,7 @@ public partial class ArtworkHTML
 
         html.AppendLine($@"<div class='gallery-item'{DateAttr(art.ctDate)}>");
         html.AppendLine($@"  <a href='{art.jpgFullURL}' rel='noopener noreferrer'><img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/></a><br/>
-          <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
+          <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a>{(string.IsNullOrEmpty(art.croppedTifURL) ? "" : $" <a class='desc' href='{art.croppedTifURL}'>[Cropped]</a>")}</div>");
 
         html.AppendLine($"  <div class='desc item-description'>");
         html.AppendLine($"    {BlankOrWithBR(art.pageNumber.ToString(), " ")}");
@@ -916,7 +927,7 @@ public partial class ArtworkHTML
         html.AppendLine($@"  <a href='{art.jpgFullURL}' rel='noopener noreferrer'>
                    <img src='{art.jpgURL}' title='(click for full size)' loading='lazy'/>
                     </a><br/>
-                    <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a></div>");
+                    <div class='desc'><a class='desc' href='{art.tifURL}'>[tif file]</a>{(string.IsNullOrEmpty(art.croppedTifURL) ? "" : $" <a class='desc' href='{art.croppedTifURL}'>[Cropped]</a>")}</div>");
       }
 
       var thumbnails = new List<(string label, int[]? id)>

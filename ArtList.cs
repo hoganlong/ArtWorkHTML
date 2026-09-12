@@ -157,6 +157,40 @@ namespace ArtWorkHTML
       else if (ext == "tif") artwork.states |= StatesType.tifFound;
       return artwork;
     }
+
+    // Matches a cropped sketchbook scan (bucket basename "KLA_<book>_<page>_C",
+    // i.e. the "_C" suffix already stripped by the caller) to the sketchbook page
+    // it's a crop of, and records its URL there. Unlike AddSketchBucketFile this
+    // never creates its own artwork entry — a cropped scan has no independent
+    // existence, it's an extra view of an existing page. Returns false (caller
+    // should fall back to treating it as a stray file) when the base name doesn't
+    // parse or no matching page exists yet.
+    public bool TryAttachCroppedSketchFile(string baseName, string url)
+    {
+      var nameParts = baseName.Split('_');
+      if (nameParts.Length < 3 || !int.TryParse(nameParts[1], out int sketchbookNumber))
+        return false;
+
+      string pagePart = nameParts[2];
+      char lastChar = pagePart.Length > 0 ? pagePart[^1] : '\0';
+      string letterPart = "";
+      if (char.IsLetter(lastChar))
+      {
+        letterPart = lastChar.ToString();
+        pagePart = pagePart[..^1];
+      }
+      if (!int.TryParse(pagePart, out int pageNumber))
+        return false;
+
+      // Must match the humanId format sketchbook pages get in the
+      // Artwork(sketchbook-page) constructor: "KLA_{book}_{page}{letter}".
+      var humanId = $"KLA_{sketchbookNumber}_{pageNumber}{letterPart}";
+      if (!artworks.TryGetValue(humanId, out var art))
+        return false;
+
+      art.croppedTifURL = url;
+      return true;
+    }
   } // ArtList
   
   public class Artwork
@@ -218,6 +252,11 @@ namespace ArtWorkHTML
     // Direved utility elements
     public string tifURL = new("");
     public string jpgURL = new("");
+
+    // URL of a cropped variant of this sketchbook page's scan, if the bucket has
+    // one (KLA_<book>_<page>_C.tif). Rendered as an extra link next to the normal
+    // tif link. Null when no cropped file exists for this page.
+    public string? croppedTifURL = null;
 
     // Lightbox target: derived from jpgURL. For sized layouts (sscan/, atch/...) the
     // preview is _large.jpg but the lightbox should open _full.jpg. For flat-named
