@@ -489,9 +489,10 @@ public partial class ArtworkHTML
   }
 
   // Returns the set of bare basenames (no path, no extension, no _small/_large
-  // /_full suffix) for every image that the shows feature claims OR that lives
-  // in the photo table — used by GenerateArtworkPages to keep these out of
-  // scans.html so they don't surface as unclassified scans.
+  // /_full suffix) for every image that the shows feature claims, that lives
+  // in the photo table, OR that's catalogued in archive_image — used by
+  // GenerateArtworkPages to keep these out of scans.html so they don't surface
+  // as unclassified scans.
   internal async Task<HashSet<string>> LoadShowImageBasenamesAsync()
   {
     var basenames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -544,6 +545,19 @@ public partial class ArtworkHTML
       while (await reader.ReadAsync())
       {
         var bn = reader.IsDBNull(0) ? "" : ExtractBasename(reader.GetString(0));
+        if (!string.IsNullOrEmpty(bn)) basenames.Add(bn);
+      }
+    }
+
+    // 4. Every non-empty archive_image.url — these are catalogued under the
+    //    Archive system now and should not surface as unclassified scans either.
+    await using (var cmd = new NpgsqlCommand(
+      "SELECT url FROM archive_image WHERE url IS NOT NULL AND url <> ''", conn))
+    await using (var reader = await cmd.ExecuteReaderAsync())
+    {
+      while (await reader.ReadAsync())
+      {
+        var bn = ExtractBasename(reader.GetString(0));
         if (!string.IsNullOrEmpty(bn)) basenames.Add(bn);
       }
     }

@@ -567,6 +567,7 @@ document.addEventListener('DOMContentLoaded', function() {
     await GenerateArtworkPages();
     await GenerateShowsPage();
     await GeneratePhotoPages();
+    await GenerateArchivePages();
     // Generated after the data pages so the error summary below the admin buttons
     // reflects this run's actual counts (populated during GenerateArtworkPages).
     await GenerateAdminPage(BuildErrorSummaryLines());
