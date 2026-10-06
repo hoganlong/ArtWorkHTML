@@ -15,6 +15,23 @@ public partial class ArtworkHTML
   // photo DB tables — that's expected, not a bug.
   private static readonly (string Label, string Prefix, string FileBase)[] ScanPrefixes =
   {
+    ("CP",   "CP_",   "scans-cp"),
+    ("SOB",  "SOB_",  "scans-sob"),
+    ("SGT",  "SGT_",  "scans-sgt"),
+    ("SIX",  "SIX_",  "scans-six"),
+    ("LLD",  "LLD_",  "scans-lld"),
+    ("MISC", "MISC_", "scans-misc"),
+    ("FIG",  "FIG_",  "scans-fig"),
+    ("ILL",  "ILL_",  "scans-ill"),
+    ("LWB",  "LWB_",  "scans-lwb"),
+    ("AWP",  "AWP_",  "scans-awp"),
+    ("PRI",  "PRI_",  "scans-pri"),
+    ("FRAM", "FRAM_", "scans-fram"),
+    ("CLG",  "CLG_",  "scans-clg"),
+    ("LGT",  "LGT_",  "scans-lgt"),
+    ("HS",   "HS_",   "scans-hs"),
+    ("SD",   "SD_",   "scans-sd"),
+    ("AWB",  "AWB_",  "scans-awb"),
     ("MGT",  "MGT_",  "scans-mgt"),
     ("LCP",  "LCP_",  "scans-lcp"),
     ("WO",   "WO_",   "scans-wo"),
