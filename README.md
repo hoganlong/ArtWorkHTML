@@ -9,11 +9,15 @@ A .NET 10 console application that generates a static HTML website from artwork 
 - Retrieves database credentials securely from AWS Secrets Manager
 - Generates multiple HTML pages:
   - `index.html` — Landing/navigation page with centered content layout. Carries an "Admin only" link to `admin.html`; the Polaroids and Scans buttons now live on the admin page rather than here
-  - `admin.html` — Password-gated admin/development page (client-side **soft** gate only — not real security). Consolidates the dev links (Errors, Polaroids, Scans) and renders the current run's error summary below the buttons
+  - `admin.html` — Password-gated admin/development page (client-side **soft** gate only — not real security). Consolidates the dev links (Errors, Polaroids, Scans → `scanslist.html`, Archive, Hidden Sketchbooks) and renders the current run's error summary below the buttons
   - `errors.html` — Gallery of just the artworks that have one or more errors (same layout as `artwork.html`; errors render in red)
   - `statistics.html` — Stats with collapsible details: Artworks section (tabbed By Year / By Series / By Location / By Type, each with browse buttons), Sketchbooks section (per-book table), and Photos section (Total Photos / Categories / Year Range stat cards + a per-category details table). Every section-level "Browse All …" button carries `back=statistics.html` so the destination shows a "Return to Statistics" link
   - `artwork.html` — Main gallery with thumbnails (including photo-table images), type filter, hover effects, tag-driven visibility
   - `polaroids.html` — Polaroid scan gallery
+  - `scanslist.html` — Hub for S3 scan files that aren't in the database (linked from `admin.html`; `noindex`). Shows one button per filename prefix (`CP_`, `MGT_`, `Walk_`, … — the list is `ScanPrefixes` in `GenerateScansPage.cs`) with a file count, plus "Other"
+  - `scans-{prefix}.html` (e.g. `scans-mgt.html`) — One page per prefix in `ScanPrefixes`, matched case-insensitively against the bucket basename. A page empties out as its files are added to the artwork/photo tables — that's expected
+  - `scans.html` — The "Other" page: unmatched scans that no prefix claimed. Photo, show and `archive_image` files are excluded
+  - `archive.html` — Admin page (linked from `admin.html`; `noindex`) listing every `archive` record with its `archive_image` views, mirroring the artwork/artwork_image layout
   - `shows.html` + `shows/show-{id}.html` — Shows index and per-show detail pages
   - `photo.html` + `photo/{category}.html` — Photos index (one button per `photo_catagory`, with counts) and per-category detail pages showing each photo with date / year / people / location / notes. The synthesized image URL is `file_location` or `sscan/KL_{code}_{image_number}`. An "Uncategorized" page is generated only if uncategorized photos exist
   - `sketchbooks.html` — Sketchbook index with intro text and a button for each sketchbook
@@ -202,6 +206,10 @@ ArtWorkHTML/
 ├── GenerateStatisticsPage.cs   — Statistics page generation (partial class)
 ├── GenerateShowsPage.cs        — shows.html + per-show pages; LoadShowImageBasenamesAsync (scans-exclusion set) (partial class)
 ├── GeneratePhotoPages.cs       — photo.html + per-category photo pages (partial class)
+├── GenerateScansPage.cs        — scanslist.html hub + scans-{prefix}.html pages + scans.html "Other" (partial class)
+├── GenerateArchivePages.cs     — archive.html from the archive/archive_image tables (partial class)
+├── GenerateErrorsPage.cs       — errors.html + per-error-type detail pages (partial class)
+├── SketchbookMeta.cs           — reads sketchbooks.xml (intro + per-book copy for sketchbook pages)
 ├── GenerateCopyrightPage.cs    — copyright.html (partial class)
 ├── GenerateHowIsMadePage.cs    — howisitmade.html (partial class)
 ├── GenerateCreditsPage.cs      — credits.html (partial class)
