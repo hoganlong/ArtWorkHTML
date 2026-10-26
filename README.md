@@ -179,6 +179,8 @@ Skipped steps are printed in gray so you can see what was bypassed. Any step fai
 - `airtable_id`, `sketch_dt`, `description`, `sketch_loc`, `sketch_people`
 - `sketch_medium`, `sketchbook_number`, `page_number`, `artwork_id`, `filename`, `pub_notes`
 - `hide` — boolean; pages with `hide = true` are excluded from `sketchbooks/` pages and instead appear only in `hide/` pages. Bucket-only sketch files (in S3 but not in the DB) also appear in `hide/` pages regardless of this flag.
+- `deletefile` — boolean; pages with `deletefile = true` are left off every page, including `hide/` pages.
+- `archive_notes` — on `hide/` pages only, the first word (case-insensitive) adds a note to the item description via `HiddenSketchNotes` in `GenerateArtworkPages.cs`: `REVIEW` → "Marked for review", `CROP` → "Needs crop", `REMOVE` → "Marked for removal", `SAVE` → "Marked to save". Other words show nothing.
 
 ## S3 Bucket Structure
 

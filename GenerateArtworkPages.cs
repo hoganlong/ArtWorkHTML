@@ -122,9 +122,25 @@ public partial class ArtworkHTML
     const string sketchSQL = @"
        SELECT s.airtable_id, s.sketch_dt, s.description, s.sketch_loc, s.sketch_people,
               s.sketch_medium, s.sketchbook_number, s.page_number, s.artwork_id, s.filename, s.pub_notes,
-              s.hide, s.deletefile
+              s.hide, s.deletefile, s.archive_notes
        FROM sketch s
        ORDER BY s.sketchbook_number ASC, s.page_number ASC";
+
+  // Hidden sketchbook pages: a note shown in the item description, keyed by the first word of
+  // sketch.archive_notes (upper-cased, same as split_part(upper(archive_notes),' ',1)).
+  static readonly Dictionary<string, string> HiddenSketchNotes = new()
+  {
+    ["SAVE"] = "Marked to save",
+    ["REVIEW"] = "Marked for review",
+    ["REMOVE"] = "Marked for removal",
+    ["CROP"] = "Needs crop",
+  };
+
+  string HiddenSketchNote(string archiveNotes)
+  {
+    var word1 = archiveNotes.Split(' ')[0].ToUpperInvariant();
+    return HiddenSketchNotes.TryGetValue(word1, out var note) ? EscapeHtml(note) : "";
+  }
 
   // Catch-all "other" images arrive from SQL flattened as view---value---view---value---...
   // ("---" never appears in a view name or filename), so just split and pair them up.
@@ -230,6 +246,7 @@ public partial class ArtworkHTML
       Artwork sketch = new(airtable_id, ctDate, location, people, medium, sketchbookNumber, pageNumber, artworkID, pubNotes, filename);
       sketch.hide = !sketchreader.IsDBNull(11) && sketchreader.GetBoolean(11);
       sketch.deletefile = !sketchreader.IsDBNull(12) && sketchreader.GetBoolean(12);
+      sketch.archiveNotes = sketchreader.IsDBNull(13) ? "" : sketchreader.GetString(13);
 
       sketchBookList.AddArtwork(sketch);
     } // while reader.ReadAsync()
@@ -813,6 +830,7 @@ public partial class ArtworkHTML
         html.AppendLine($"    {BlankOrWithBR(art.medium, "  ")}");
         html.AppendLine($"    {BlankOrWithBR(art.people, "  ")}");
         html.AppendLine($"    {BlankOrWithBR(art.notes, "  Notes: ")}");
+        html.AppendLine($"    {BlankOrWithBR(HiddenSketchNote(art.archiveNotes), "  ")}");
 
         html.AppendLine($"{BlankOrComment(art.id, "id: ")}");
         html.AppendLine($"{BlankOrComment(art.artworkID!, "artid: ")}");

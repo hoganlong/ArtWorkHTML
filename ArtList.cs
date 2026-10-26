@@ -247,6 +247,7 @@ namespace ArtWorkHTML
     public StatesType states=StatesType.NoImage;
     public bool hide = false;
     public bool deletefile = false;
+    public string archiveNotes = "";
     public bool unsigned = false;
 
     // Direved utility elements
